@@ -236,7 +236,7 @@ dependencies = [
     { name = "pydantic" },
 ]
 
-[package.dev-dependencies]
+[package.optional-dependencies]
 dev = [
     { name = "codespell" },
     { name = "pyright" },
@@ -251,23 +251,20 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "codespell", marker = "extra == 'dev'", specifier = ">=2.4.1" },
     { name = "dapr", specifier = ">=1.16.0" },
     { name = "msgpack", specifier = ">=1.1.1" },
     { name = "pydantic", specifier = ">=2.11.9" },
+    { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1.406" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.2.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.0.0" },
+    { name = "radon", marker = "extra == 'dev'", specifier = ">=5.1.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.13.2" },
+    { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.14" },
+    { name = "wily", marker = "extra == 'dev'", specifier = ">=1.25.0" },
 ]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "codespell", specifier = ">=2.4.1" },
-    { name = "pyright", specifier = ">=1.1.406" },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-asyncio", specifier = ">=1.2.0" },
-    { name = "pytest-cov", specifier = ">=7.0.0" },
-    { name = "radon", specifier = ">=5.1.0" },
-    { name = "ruff", specifier = ">=0.13.2" },
-    { name = "vulture", specifier = ">=2.14" },
-    { name = "wily", specifier = ">=1.25.0" },
-]
+provides-extras = ["dev"]
 
 [[package]]
 name = "fastjsonschema"

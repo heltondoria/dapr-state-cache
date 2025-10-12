@@ -190,7 +190,8 @@ class DaprStateBackend:
             Dapr response object
         """
         self._ensure_dapr_client()
-        assert self._dapr_client is not None  # For type checker
+        if self._dapr_client is None:
+            raise DaprUnavailableError("Dapr client not available after initialization")
 
         logger.debug(f"Getting cache key: {key} from store: {self._store_name}")
 
@@ -280,7 +281,6 @@ class DaprStateBackend:
             return self._handle_get_response(response, key)
         except Exception as e:
             self._classify_get_error(e, key)
-            return None  # This line should never be reached
 
     def _validate_set_parameters(self, key: str, value: bytes, ttl_seconds: int) -> None:
         """Validate parameters for set operation.
@@ -322,7 +322,8 @@ class DaprStateBackend:
             metadata: Dapr metadata including TTL
         """
         self._ensure_dapr_client()
-        assert self._dapr_client is not None  # For type checker
+        if self._dapr_client is None:
+            raise DaprUnavailableError("Dapr client not available after initialization")
 
         logger.debug(
             f"Setting cache key: {key} in store: {self._store_name} "
@@ -379,7 +380,8 @@ class DaprStateBackend:
 
         try:
             self._ensure_dapr_client()
-            assert self._dapr_client is not None  # For type checker
+            if self._dapr_client is None:
+                raise DaprUnavailableError("Dapr client not available after initialization")
 
             logger.debug(f"Invalidating cache key: {key} from store: {self._store_name}")
 
@@ -434,6 +436,6 @@ class DaprStateBackend:
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(self, _exc_type: Any, _exc_val: Any, _exc_tb: Any) -> None:
         """Context manager exit."""
         self.close()

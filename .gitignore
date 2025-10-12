@@ -9,3 +9,10 @@ src/dapr_state_cache/orchestration/__pycache__
 src/dapr_state_cache/backend/__pycache__
 tests/__pycache__
 tests/unit/__pycache__
+*/*.pyc
+src/dapr_state_cache/codecs/__pycache__/__init__.cpython-312.pyc
+src/dapr_state_cache/codecs/__pycache__/__init__.cpython-312.pyc
+src/dapr_state_cache/codecs/__pycache__/json_serializer.cpython-312.pyc
+src/dapr_state_cache/codecs/__pycache__/normalizers.cpython-312.pyc
+src/dapr_state_cache/codecs/__pycache__/pickle_serializer.cpython-312.pyc
+tests/unit/__pycache__/test_codecs.cpython-312-pytest-8.4.2.pyc

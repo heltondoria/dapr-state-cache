@@ -1,196 +1,232 @@
 ---
 globs: *.py
-description: "Regras obrigatórias de Clean Code e TDD para arquivos Python - baseado no guia completo de análise e refatoração"
+description: "Mandatory Clean Code and TDD rules based on Robert C. Martin and Kent Beck for AI-assisted development"
 ---
 
-# 🎯 Regras Clean Code + TDD para Python
+# Clean Code + Quality-Driven Development for Python
 
-Esta regra implementa as diretrizes do guia completo definido em [prompt.md](mdc:prompt.md) e deve ser seguida rigorosamente em todos os arquivos Python do projeto.
+You are a specialist in **Clean Code** (Robert C. Martin) and **quality-driven development** adapted for AI-assisted workflows. Apply fundamental principles to ensure **clean, testable, and maintainable code** through automated validation and comprehensive quality gates.
 
-## 📋 Princípios Obrigatórios
+## Core Development Philosophy
 
-### ✅ Concisão de Funções e Métodos
+### AI-Optimized Quality Approach
 
-- **Máximo 20 linhas** por método (Robert Martin)
-- **Uma única responsabilidade** por função
-- **Nível de abstração consistente** em cada método
-- **Extração de métodos** quando exceder limites
+**Generate comprehensive solutions** (code + tests + documentation) from specifications, then **validate immediately** using automated quality gates rather than traditional incremental TDD cycles.
 
-### ✅ Nomes Significativos
+**Quality Gates Workflow:**
 
-- Nomes devem **revelar intenção** claramente
-- **Evitar informação enganosa** ou abbreviações
-- Usar nomes **pronunciáveis e pesquisáveis**
-- Seguir convenções Python (snake_case para funções/variáveis, PascalCase para classes)
-
-### ✅ Injeção de Dependência
-
-- **Instâncias passadas como parâmetros** do construtor
-- **Evitar instanciação direta** dentro das classes
-- **Usar abstrações** (interfaces/protocols) em vez de implementações concretas
-- **Configurar DI container** adequadamente
-
-### ✅ Uso Correto de Entidades/Exceções
-
-- **Exceções semânticas** específicas do domínio
-- **Entidades de domínio** bem definidas
-- **Respeitar arquitetura** (Clean/Hexagonal/Onion)
-- **Separação clara** entre layers (domain, application, infrastructure)
-
-## 🚫 Code Smells a Evitar
-
-### Violações Críticas
-
-- **DRY**: Eliminar código duplicado
-- **SRP**: Uma classe = uma responsabilidade
-- **Long Method**: Métodos > 20 linhas
-- **Feature Envy**: Método usando mais dados de outra classe
-- **Data Clumps**: Parâmetros sempre agrupados
-- **Magic Numbers/Strings**: Usar constantes nomeadas
-
-### Padrões Proibidos
-
-```python
-# ❌ EVITAR - Magic numbers
-def calculate_tax(amount):
-    return amount * 0.15  # Magic number!
-
-# ✅ CORRETO - Constante nomeada
-TAX_RATE = 0.15
-def calculate_tax(amount):
-    return amount * TAX_RATE
+```bash
+make check      # Fast feedback during development
+make validate   # Complete validation before commit  
+make health     # Comprehensive project assessment
 ```
 
-## 🧪 Requisitos de Testes (TDD)
+## Mandatory Code Quality Standards
 
-### Cobertura Obrigatória
+### Method Design Principles (Robert C. Martin)
 
-- **100% cobertura de linhas** (`coverage.py`)
-- **100% cobertura de branches** (`coverage.py --branch`)
-- **Todos os cenários de exceção** cobertos
-- **Testes independentes** e repetíveis
-
-### Nomenclatura de Testes
+- **≤20 lines per method** - Enforced via `make metrics`
+- **Single responsibility** - One purpose per function/class
+- **Consistent abstraction level** - Extract methods when needed
+- **Meaningful names** - Reveal intent clearly, avoid abbreviations
 
 ```python
-def test_[método]_[cenário]_[resultado_esperado](self):
-    # Arrange
-    # Act  
-    # Assert
+# ✅ GOOD - Clear, focused method
+def calculate_discounted_price(original_price: Decimal, discount_rate: Decimal) -> Decimal:
+    """Calculate price after applying discount rate."""
+    validate_positive_amount(original_price)
+    validate_discount_rate(discount_rate)
+    return original_price * (1 - discount_rate)
+
+# ❌ BAD - Multiple responsibilities, magic numbers
+def process(price, rate):
+    if price < 0: raise Exception("Bad price")
+    return price * 0.85 if rate > 0.15 else price * rate
 ```
 
-### Estrutura Obrigatória
+### Architecture & Dependencies
 
-- **Arrange-Act-Assert** (AAA) pattern
-- **Mocks/stubs** para isolamento
-- **Teste métodos privados** quando necessário para coverage
-- **Execução rápida** (< 1s para suítes pequenas)
+- **Dependency injection** - Pass dependencies via constructor
+- **Abstractions over concretions** - Use protocols/interfaces
+- **Layer separation** - Domain/Application/Infrastructure boundaries
+- **Domain-specific exceptions** - Semantic error handling
 
-## 📊 Métricas de Qualidade (Obrigatórias)
+### SOLID Principles Enforcement
 
-| Aspecto | Meta Obrigatória | Validação |
-|---------|------------------|-----------|
-| **Cobertura de Linhas** | 100% | `make test-coverage` |
-| **Cobertura de Branches** | 100% | `coverage.py --branch` |
-| **Complexidade Ciclomática** | < 6 por método | `make metrics` |
-| **Índice de Manutenibilidade** | > 20 | `make radon` |
-| **Linhas por Método** | < 21 | `make radon` |
-| **Código Não Utilizado** | 0% | `make vulture` |
+Execute `make quality` to validate:
+
+- **S**ingle Responsibility - Each class has one reason to change
+- **O**pen/Closed - Open for extension, closed for modification
+- **L**iskov Substitution - Subtypes must be substitutable
+- **I**nterface Segregation - Client-specific interfaces
+- **D**ependency Inversion - Depend on abstractions
+
+## Quality Metrics & Automated Validation
+
+| Quality Aspect | Requirement | Validation Command |
+|---|---|---|
+| **Line Coverage** | 100% | `make test-coverage` |
+| **Branch Coverage** | 100% | `make test-coverage` |
+| **Cyclomatic Complexity** | ≤5 per method | `make metrics` |
+| **Maintainability Index** | ≥20 | `make radon` |
+| **Method Length** | ≤20 lines | `make radon` |
+| **Dead Code** | 0% | `make vulture` |
 | **Type Safety** | 100% | `make mypy` |
 | **Linting Score** | 10/10 | `make lint-check` |
-| **Segurança** | Sem vulnerabilidades | `make security` |
+| **Security Vulnerabilities** | 0 | `make security` |
 
-## 🛠️ Comandos de Validação
+## Test Strategy for AI Development
 
-### Workflow de Desenvolvimento Rápido
+### Comprehensive Test Generation
 
-```bash
-# Verificação rápida durante desenvolvimento
-make check          # Lint + tipos + formatação
-make fix            # Correção automática de problemas
+**Generate complete test suites** covering all scenarios simultaneously:
+
+```python
+def test_calculate_discounted_price_with_valid_inputs_returns_correct_amount():
+    # Arrange
+    original_price = Decimal('100.00')
+    discount_rate = Decimal('0.10')
+    expected_price = Decimal('90.00')
+    
+    # Act
+    result = calculate_discounted_price(original_price, discount_rate)
+    
+    # Assert
+    assert result == expected_price
+
+def test_calculate_discounted_price_with_negative_price_raises_validation_error():
+    # Arrange
+    invalid_price = Decimal('-10.00')
+    discount_rate = Decimal('0.10')
+    
+    # Act & Assert
+    with pytest.raises(ValidationError, match="Price must be positive"):
+        calculate_discounted_price(invalid_price, discount_rate)
 ```
 
-### Execução Obrigatória Antes de Commit
+### Test Coverage Requirements
+
+- **100% line and branch coverage** - `make test-coverage`
+- **All exception paths tested** - No untested error conditions  
+- **Arrange-Act-Assert pattern** - Clear test structure
+- **Descriptive test names** - `test_method_scenario_expected_result`
+- **Independent tests** - No test interdependencies
+
+## Development Workflow Integration
+
+### Fast Feedback Loop
 
 ```bash
-# Validação completa
-make validate       # Análise completa (lint + quality + testes)
-make health         # Relatório de saúde do projeto
+make check          # Lint + format + types (< 10s)
 ```
 
-### Análise de Qualidade Específica
+**Use during active development** for immediate quality feedback.
+
+### Pre-Commit Validation
 
 ```bash
-# Ferramentas individuais
-make radon          # Complexidade e métricas
-make vulture        # Código não utilizado
-make mypy           # Verificação de tipos
-make security       # Análise de segurança
-make quality        # Análise completa de qualidade
-make metrics        # Métricas de código
+make validate       # Complete analysis + tests (< 60s)
 ```
 
-### Flexibilidade de Uso
+**Execute before every commit** - ensures all quality gates pass.
+
+### Comprehensive Health Check
 
 ```bash
-# Análise de arquivos específicos
-TARGET=src/module.py make mypy
+make health         # Full project assessment + metrics
+```
+
+**Run periodically** for deep quality insights and maintainability tracking.
+
+### Targeted Analysis
+
+```bash
+# Focus on specific files/directories
 TARGET=src/core/ make quality
+TARGET=src/models.py make mypy
 ```
 
-### Ferramentas Necessárias
-
-- **pytest** para testes unitários
-- **coverage.py** para cobertura
-- **radon** para métricas de complexidade
-- **vulture** para detecção de código não utilizado
-- **mypy** para verificação de tipos
-- **wily** para acompanhamento temporal
-- **ruff** para linting e formatação (inclui regras de segurança)
-- **uv** como gerenciador de pacotes
-- **Makefile** para automação
-
-## 📐 Princípios SOLID (Aplicação Obrigatória)
-
-- **S** - Single Responsibility Principle
-- **O** - Open/Closed Principle  
-- **L** - Liskov Substitution Principle
-- **I** - Interface Segregation Principle
-- **D** - Dependency Inversion Principle
-
-## 🚨 Critérios de Excelência (Não Negociáveis)
-
-- ✅ **Zero linting errors** (`make lint-check`)
-- ✅ **100% test coverage** (`make test-coverage`)
-- ✅ **Complexidade < 5** (`make metrics`)
-- ✅ **Zero código não utilizado** (`make vulture`)
-- ✅ **Type safety 100%** (`make mypy`)
-- ✅ **Sem vulnerabilidades de segurança** (`make security`)
-- ✅ **Índice de manutenibilidade > 20** (`make radon`)
-- ✅ **Princípios SOLID aplicados**
-- ✅ **Arquitetura respeitada**
-- ✅ **Performance mantida**
-
-### Validação Automatizada
+### Automated Issue Resolution
 
 ```bash
-make validate  # Executa todos os critérios automaticamente
-make health    # Relatório completo de saúde do projeto
+make fix           # Auto-format + fix linting issues
 ```
 
-## 📖 Referências Obrigatórias
+## Code Smell Detection & Prevention
 
-### Livros Base
+### Critical Anti-Patterns (Auto-Detected)
 
-- **Clean Code** - Robert C. Martin
-- **Test-Driven Development: By Example** - Kent Beck
-- **Clean Architecture** - Robert C. Martin
+- **DRY Violations** - `make vulture` detects code duplication
+- **Long Methods** - `make radon` enforces ≤20 lines  
+- **High Complexity** - `make metrics` enforces ≤5 cyclomatic complexity
+- **Magic Numbers** - `make security` detects hardcoded values
+- **Feature Envy** - `make quality` identifies coupling issues
+- **Data Clumps** - Static analysis identifies parameter groups
 
-### Padrões de Teste
+### Immediate Resolution Actions
 
-- **Arrange-Act-Assert** (AAA)
-- **Test Doubles** (Mock, Stub, Fake, Spy)
+When quality gates fail:
+
+1. **Run `make fix`** for auto-correctable issues
+2. **Execute `make metrics TARGET=file.py`** for specific analysis
+3. **Use `make quality`** for comprehensive feedback
+4. **Apply refactoring patterns** based on tool suggestions
+
+## Quality Assurance Automation
+
+### Continuous Quality Monitoring
+
+```bash
+make wily-build    # Update maintainability database
+make wily-report   # Generate quality trends
+```
+
+### Security & Performance
+
+```bash
+make security      # Detect security vulnerabilities
+make radon         # Analyze complexity and maintainability
+```
+
+### Integration with Development Tools
+
+- **ruff** - Lightning-fast linting and formatting
+- **mypy** - Static type checking
+- **pytest** - Comprehensive testing framework
+- **coverage.py** - Line and branch coverage analysis
+- **radon** - Complexity and maintainability metrics
+- **vulture** - Dead code detection
+- **wily** - Maintainability tracking over time
+
+## Excellence Criteria (Non-Negotiable)
+
+Execute `make validate` to ensure:
+
+✅ **Zero linting errors** - Perfect code style  
+✅ **100% test coverage** - Complete test protection  
+✅ **Complexity ≤5** - Maintainable code structure  
+✅ **No dead code** - Clean, focused codebase  
+✅ **Perfect type safety** - Runtime error prevention  
+✅ **Zero security vulnerabilities** - Secure implementation  
+✅ **High maintainability** - Long-term code health  
+✅ **SOLID compliance** - Robust architecture  
+
+### Validation Commands Summary
+
+```bash
+# Development cycle
+make check validate health    # Progressive quality gates
+
+# Specific analysis  
+make radon vulture mypy security quality metrics
+
+# Maintenance
+make wily-build wily-report
+
+# Automation
+make fix                      # Auto-resolve issues
+```
 
 ---
 
-⚠️ **IMPORTANTE**: Qualquer violação destas regras deve ser corrigida antes da submissão do código. Use o Makefile completo para análise detalhada quando necessário.
+**Quality Philosophy:** Generate comprehensive, well-tested solutions and validate immediately through automated quality gates rather than incremental development cycles. Let tools provide continuous feedback for maintaining Robert C. Martin and Kent Beck's quality standards in AI-assisted development.

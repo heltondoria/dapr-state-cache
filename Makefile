@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 .PHONY: help lint test-quick test-coverage clean install dev-install \
-	format lint-check lint-fix radon vulture mypy security \
+	format lint-check lint-fix radon vulture type-check static-analysis security \
 	quality metrics health check fix validate wily-init wily-build wily-report
 
 # Variables
@@ -58,10 +58,17 @@ vulture: ## Detect unused code
 	$(UV) run vulture $(TARGET)
 	@echo "✅ Unused code analysis completed"
 
-mypy: ## Type checking
-	@echo "Checking types..."
-	$(UV) run mypy $(TARGET)
-	@echo "✅ Type checking passed"
+# Conceptual Commands (Stable Abstractions)
+type-check: ## Static type verification
+	@echo "Executando verificação de tipos..."
+	$(UV) run pyright $(TARGET)
+	@echo "✅ Verificação de tipos concluída"
+
+static-analysis: ## Complete static code analysis
+	@echo "Executando análise estática completa..."
+	$(MAKE) type-check TARGET=$(TARGET)
+	$(MAKE) security TARGET=$(TARGET)
+	@echo "✅ Análise estática completa"
 
 security: ## Security analysis via Ruff (bandit rules)
 	@echo "Running security analysis..."
@@ -85,11 +92,11 @@ wily-report: ## Generate maintainability report
 	@echo "✅ Maintainability report generated"
 
 # Combined Quality Commands
-quality: ## Complete quality analysis (radon + vulture + mypy + security)
+quality: ## Complete quality analysis (radon + vulture + type-check + security)
 	@echo "Running complete quality analysis..."
 	$(MAKE) radon TARGET=$(TARGET)
 	$(MAKE) vulture TARGET=$(TARGET)
-	$(MAKE) mypy TARGET=$(TARGET)
+	$(MAKE) type-check TARGET=$(TARGET)
 	$(MAKE) security TARGET=$(TARGET)
 	@echo "✅ Complete quality analysis finished"
 
@@ -111,7 +118,7 @@ check: ## Quick development check (lint + types + format-check)
 	@echo "Running quick development check..."
 	$(UV) run ruff check $(TARGET)
 	$(UV) run ruff format --check $(TARGET)
-	$(MAKE) mypy TARGET=$(TARGET)
+	$(MAKE) type-check TARGET=$(TARGET)
 	@echo "✅ Quick check passed"
 
 fix: ## Auto-fix issues (format + lint-fix)
@@ -153,9 +160,8 @@ clean: ## Clean build artifacts and cache
 	rm -rf .coverage
 	rm -rf htmlcov/
 	rm -rf .pytest_cache/
-	rm -rf __pycache__/
-	find . -type d -name "__pycache__" -delete
-	find . -type f -name "*.pyc" -delete
+	find . -name "*.pyc" -not -path "./.venv/*" -delete
+	find . -name "__pycache__" -not -path "./.venv/*" -type d -exec rm -rf {} + 2>/dev/null || true
 	@echo "✅ Clean completed"
 
 build: lint test-coverage ## Build package (after validation)
@@ -180,7 +186,7 @@ requirements: ## Show Clean Code + TDD requirements
 	@echo "  • 100% branch coverage (--cov-branch)"
 	@echo "  • Complexity < 5 (make metrics)"
 	@echo "  • No unused code (make vulture)"
-	@echo "  • Type safety (make mypy)"
+	@echo "  • Type safety (make type-check)"
 	@echo "  • Security compliance (make security)"
 	@echo "  • Methods < 20 lines"
 	@echo "  • AAA test pattern"
@@ -189,11 +195,12 @@ requirements: ## Show Clean Code + TDD requirements
 	@echo "📋 Quality Tools:"
 	@echo "  • make radon           # Code complexity analysis"
 	@echo "  • make vulture         # Unused code detection"
-	@echo "  • make mypy           # Type checking"
-	@echo "  • make security       # Security analysis"
-	@echo "  • make quality        # Complete quality check"
-	@echo "  • make metrics        # Code metrics"
-	@echo "  • make health         # Project health"
+	@echo "  • make type-check      # Static type verification"
+	@echo "  • make static-analysis # Complete static analysis"
+	@echo "  • make security        # Security analysis"
+	@echo "  • make quality         # Complete quality check"
+	@echo "  • make metrics         # Code metrics"
+	@echo "  • make health          # Project health"
 	@echo ""
 	@echo "📋 Development Workflow:"
 	@echo "  1. make dev-install    # Setup dev environment"

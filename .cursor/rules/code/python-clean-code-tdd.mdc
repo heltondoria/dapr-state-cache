@@ -71,7 +71,7 @@ Execute `make quality` to validate:
 | **Maintainability Index** | ≥20 | `make radon` |
 | **Method Length** | ≤20 lines | `make radon` |
 | **Dead Code** | 0% | `make vulture` |
-| **Type Safety** | 100% | `make mypy` |
+| **Type Safety** | 100% | `make type-check` |
 | **Linting Score** | 10/10 | `make lint-check` |
 | **Security Vulnerabilities** | 0 | `make security` |
 
@@ -143,7 +143,7 @@ make health         # Full project assessment + metrics
 ```bash
 # Focus on specific files/directories
 TARGET=src/core/ make quality
-TARGET=src/models.py make mypy
+TARGET=src/models.py make type-check
 ```
 
 ### Automated Issue Resolution
@@ -191,7 +191,7 @@ make radon         # Analyze complexity and maintainability
 ### Integration with Development Tools
 
 - **ruff** - Lightning-fast linting and formatting
-- **mypy** - Static type checking
+- **pyright** - High-performance static type checking
 - **pytest** - Comprehensive testing framework
 - **coverage.py** - Line and branch coverage analysis
 - **radon** - Complexity and maintainability metrics
@@ -218,7 +218,7 @@ Execute `make validate` to ensure:
 make check validate health    # Progressive quality gates
 
 # Specific analysis  
-make radon vulture mypy security quality metrics
+make radon vulture type-check static-analysis security quality metrics
 
 # Maintenance
 make wily-build wily-report

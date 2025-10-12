@@ -3,9 +3,13 @@ Pickle serializer implementation.
 
 Python native serializer using pickle module for maximum compatibility
 with Python objects. Should be used with caution due to security implications.
+
+⚠️ SECURITY WARNING: This serializer uses pickle which can execute arbitrary code!
+Only use in trusted environments with data from trusted sources.
 """
 
 import pickle
+import warnings
 from typing import Any
 
 from ..backend.exceptions import CacheSerializationError
@@ -127,8 +131,13 @@ class PickleSerializer(Serializer):
     def deserialize(self, data: bytes) -> Any:
         """Deserialize pickle bytes to Python data.
 
+        ⚠️ SECURITY WARNING: pickle.loads() can execute arbitrary code!
+        This method should only deserialize data from trusted sources within
+        the same application/service boundary. Never use with external or
+        user-provided data.
+
         Args:
-            data: Pickle encoded bytes
+            data: Pickle encoded bytes from trusted source
 
         Returns:
             Deserialized Python object
@@ -140,8 +149,18 @@ class PickleSerializer(Serializer):
         if not isinstance(data, bytes):
             raise CacheSerializationError(f"Expected bytes, got {type(data).__name__}")
 
+        # Issue security warning on first use
+        warnings.warn(
+            "PickleSerializer.deserialize() uses pickle.loads() which can execute "
+            "arbitrary code. Only use with trusted data from same application. "
+            "Consider JsonSerializer or MsgpackSerializer for better security.",
+            UserWarning,
+            stacklevel=2,
+        )
+
         try:
-            return pickle.loads(data)
+            # Note: Using pickle.loads() here is intentional but requires trusted data
+            return pickle.loads(data)  # noqa: S301
         except (pickle.PickleError, EOFError, ValueError) as e:
             raise CacheSerializationError(f"Pickle deserialization failed: {e}") from e
         except Exception as e:

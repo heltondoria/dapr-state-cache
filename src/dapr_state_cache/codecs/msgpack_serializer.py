@@ -91,11 +91,11 @@ class MsgpackSerializer(Serializer):
         else:
             try:
                 import msgpack  # type: ignore[import-untyped]
+
                 self._msgpack = msgpack
             except ImportError as e:
                 raise ImportError(
-                    "MsgpackSerializer requires msgpack package. "
-                    "Install with: pip install msgpack"
+                    "MsgpackSerializer requires msgpack package. Install with: pip install msgpack"
                 ) from e
 
     def serialize(self, data: Any) -> bytes:

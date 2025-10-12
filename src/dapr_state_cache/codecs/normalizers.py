@@ -83,7 +83,7 @@ def _normalize_binary_types(obj: Any) -> str | None:
         Base64 encoded string or None if not binary type
     """
     if isinstance(obj, bytes):
-        return base64.b64encode(obj).decode('ascii')
+        return base64.b64encode(obj).decode("ascii")
     return None
 
 
@@ -105,10 +105,7 @@ def _normalize_collection_types(obj: Any) -> Any | None:
 
     if isinstance(obj, dict):
         # Sort keys for deterministic order
-        return {
-            key: normalize_for_serialization(value)
-            for key, value in sorted(obj.items())
-        }
+        return {key: normalize_for_serialization(value) for key, value in sorted(obj.items())}
 
     return None
 
@@ -122,7 +119,7 @@ def _normalize_custom_object(obj: Any) -> Any | None:
     Returns:
         Normalized __dict__ or None if no __dict__ available
     """
-    if hasattr(obj, '__dict__'):
+    if hasattr(obj, "__dict__"):
         return normalize_for_serialization(obj.__dict__)
     return None
 
@@ -204,13 +201,10 @@ def serialize_args_for_key(args: tuple[Any, ...], kwargs: dict[str, Any]) -> str
     Raises:
         CacheSerializationError: If arguments contain unsupported types
     """
-    normalized_data = {
-        'args': normalize_for_serialization(args),
-        'kwargs': normalize_for_serialization(kwargs)
-    }
+    normalized_data = {"args": normalize_for_serialization(args), "kwargs": normalize_for_serialization(kwargs)}
 
     # Use separators for compact representation and sort_keys for determinism
-    return json.dumps(normalized_data, separators=(',', ':'), sort_keys=True)
+    return json.dumps(normalized_data, separators=(",", ":"), sort_keys=True)
 
 
 def get_function_path(func: Any) -> str:
@@ -225,12 +219,12 @@ def get_function_path(func: Any) -> str:
     Returns:
         Dot-separated path string
     """
-    module_name = getattr(func, '__module__', None)
+    module_name = getattr(func, "__module__", None)
     if module_name is None:
-        module_name = 'unknown'
+        module_name = "unknown"
 
     # Check if function is a method (has __qualname__ with class info)
-    if hasattr(func, '__qualname__') and '.' in func.__qualname__:
+    if hasattr(func, "__qualname__") and "." in func.__qualname__:
         return f"{module_name}.{func.__qualname__}"
 
     # Standalone function

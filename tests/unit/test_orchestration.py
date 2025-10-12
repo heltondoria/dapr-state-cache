@@ -23,7 +23,7 @@ class TestDeduplicationManager:
         """Test DeduplicationManager initialization."""
         # Arrange & Act
         manager = DeduplicationManager()
-        
+
         # Assert
         assert manager._futures == {}
         assert isinstance(manager._lock, asyncio.Lock)
@@ -35,13 +35,13 @@ class TestDeduplicationManager:
         manager = DeduplicationManager()
         key = "test:key"
         expected_result = "computed_value"
-        
+
         async def mock_compute() -> str:
             return expected_result
-        
+
         # Act
         result = await manager.deduplicate(key, mock_compute)
-        
+
         # Assert
         assert result == expected_result
         # Future should be cleaned up after completion
@@ -54,20 +54,17 @@ class TestDeduplicationManager:
         manager = DeduplicationManager()
         key = "test:key"
         call_count = 0
-        
+
         async def mock_compute() -> str:
             nonlocal call_count
             call_count += 1
             await asyncio.sleep(0.01)  # Simulate work
             return f"result_{call_count}"
-        
+
         # Act - start multiple concurrent requests
-        tasks = [
-            asyncio.create_task(manager.deduplicate(key, mock_compute))
-            for _ in range(3)
-        ]
+        tasks = [asyncio.create_task(manager.deduplicate(key, mock_compute)) for _ in range(3)]
         results = await asyncio.gather(*tasks)
-        
+
         # Assert
         # All requests should get the same result
         assert all(result == "result_1" for result in results)
@@ -83,19 +80,18 @@ class TestDeduplicationManager:
         manager = DeduplicationManager()
         key1 = "test:key1"
         key2 = "test:key2"
-        
+
         async def mock_compute1() -> str:
             return "result1"
-        
+
         async def mock_compute2() -> str:
             return "result2"
-        
+
         # Act
         result1, result2 = await asyncio.gather(
-            manager.deduplicate(key1, mock_compute1),
-            manager.deduplicate(key2, mock_compute2)
+            manager.deduplicate(key1, mock_compute1), manager.deduplicate(key2, mock_compute2)
         )
-        
+
         # Assert
         assert result1 == "result1"
         assert result2 == "result2"
@@ -109,21 +105,18 @@ class TestDeduplicationManager:
         manager = DeduplicationManager()
         key = "test:key"
         error_message = "Computation failed"
-        
+
         async def failing_compute() -> str:
             await asyncio.sleep(0.01)
             raise ValueError(error_message)
-        
+
         # Act & Assert
-        tasks = [
-            asyncio.create_task(manager.deduplicate(key, failing_compute))
-            for _ in range(3)
-        ]
-        
+        tasks = [asyncio.create_task(manager.deduplicate(key, failing_compute)) for _ in range(3)]
+
         # All tasks should raise the same error
         with pytest.raises(ValueError) as exc_info:
             await asyncio.gather(*tasks)
-        
+
         assert error_message in str(exc_info.value)
         # Future should be cleaned up after error
         assert key not in manager._futures
@@ -135,16 +128,16 @@ class TestDeduplicationManager:
         manager = DeduplicationManager()
         key = "test:key"
         call_count = 0
-        
+
         async def mock_compute() -> str:
             nonlocal call_count
             call_count += 1
             return f"result_{call_count}"
-        
+
         # Act - make sequential calls
         result1 = await manager.deduplicate(key, mock_compute)
         result2 = await manager.deduplicate(key, mock_compute)
-        
+
         # Assert
         assert result1 == "result_1"
         assert result2 == "result_2"
@@ -158,22 +151,22 @@ class TestDeduplicationManager:
         key = "test:key"
         computation_started = asyncio.Event()
         computation_continue = asyncio.Event()
-        
+
         async def slow_compute() -> str:
             computation_started.set()
             await computation_continue.wait()
             return "result"
-        
+
         # Act - start computation but don't let it finish
         task = asyncio.create_task(manager.deduplicate(key, slow_compute))
         await computation_started.wait()  # Wait for computation to start
-        
+
         is_running = await manager.is_computation_running(key)
-        
+
         # Cleanup - let computation finish
         computation_continue.set()
         await task
-        
+
         # Assert
         assert is_running is True
 
@@ -183,10 +176,10 @@ class TestDeduplicationManager:
         # Arrange
         manager = DeduplicationManager()
         key = "test:key"
-        
+
         # Act
         is_running = await manager.is_computation_running(key)
-        
+
         # Assert
         assert is_running is False
 
@@ -197,22 +190,22 @@ class TestDeduplicationManager:
         manager = DeduplicationManager()
         key = "test:key"
         computation_started = asyncio.Event()
-        
+
         async def slow_compute() -> str:
             computation_started.set()
             await asyncio.sleep(10)  # Long computation
             return "result"
-        
+
         # Act - start computation
         task = asyncio.create_task(manager.deduplicate(key, slow_compute))
         await computation_started.wait()  # Wait for computation to start
-        
+
         cancelled = await manager.cancel_computation(key)
-        
+
         # Assert
         assert cancelled is True
         assert key not in manager._futures
-        
+
         # Task should be cancelled
         with pytest.raises(asyncio.CancelledError):
             await task
@@ -223,10 +216,10 @@ class TestDeduplicationManager:
         # Arrange
         manager = DeduplicationManager()
         key = "test:key"
-        
+
         # Act
         cancelled = await manager.cancel_computation(key)
-        
+
         # Assert
         assert cancelled is False
 
@@ -239,26 +232,26 @@ class TestDeduplicationManager:
         key2 = "test:key2"
         computation_started = asyncio.Event()
         computation_continue = asyncio.Event()
-        
+
         async def slow_compute() -> str:
             computation_started.set()
             await computation_continue.wait()
             return "result"
-        
+
         # Act - start computations
         task1 = asyncio.create_task(manager.deduplicate(key1, slow_compute))
         await computation_started.wait()
         computation_started.clear()
-        
+
         task2 = asyncio.create_task(manager.deduplicate(key2, slow_compute))
         await computation_started.wait()
-        
+
         active_computations = await manager.get_active_computations()
-        
+
         # Cleanup
         computation_continue.set()
         await asyncio.gather(task1, task2)
-        
+
         # Assert
         assert set(active_computations) == {key1, key2}
 
@@ -270,26 +263,26 @@ class TestDeduplicationManager:
         key = "test:key"
         computation_started = asyncio.Event()
         computation_continue = asyncio.Event()
-        
+
         async def slow_compute() -> str:
             computation_started.set()
             await computation_continue.wait()
             return "result"
-        
+
         # Act
         initial_count = await manager.get_computation_count()
-        
+
         task = asyncio.create_task(manager.deduplicate(key, slow_compute))
         await computation_started.wait()
-        
+
         active_count = await manager.get_computation_count()
-        
+
         # Cleanup
         computation_continue.set()
         await task
-        
+
         final_count = await manager.get_computation_count()
-        
+
         # Assert
         assert initial_count == 0
         assert active_count == 1
@@ -301,27 +294,27 @@ class TestDeduplicationManager:
         # Arrange
         manager = DeduplicationManager()
         computation_started = asyncio.Event()
-        
+
         async def slow_compute() -> str:
             computation_started.set()
             await asyncio.sleep(10)  # Long computation
             return "result"
-        
+
         # Start multiple computations
         task1 = asyncio.create_task(manager.deduplicate("key1", slow_compute))
         await computation_started.wait()
         computation_started.clear()
-        
+
         task2 = asyncio.create_task(manager.deduplicate("key2", slow_compute))
         await computation_started.wait()
-        
+
         # Act
         cancelled_count = await manager.clear_all_computations()
-        
+
         # Assert
         assert cancelled_count == 2
         assert await manager.get_computation_count() == 0
-        
+
         # Tasks should be cancelled
         with pytest.raises(asyncio.CancelledError):
             await task1
@@ -336,7 +329,7 @@ class TestDeduplicationStats:
         """Test DeduplicationStats initialization."""
         # Arrange & Act
         stats = DeduplicationStats()
-        
+
         # Assert
         assert stats.total_requests == 0
         assert stats.deduplicated_requests == 0
@@ -348,10 +341,10 @@ class TestDeduplicationStats:
         """Test recording a deduplicated request."""
         # Arrange
         stats = DeduplicationStats()
-        
+
         # Act
         await stats.record_request(was_deduplicated=True)
-        
+
         # Assert
         assert stats.total_requests == 1
         assert stats.deduplicated_requests == 1
@@ -362,10 +355,10 @@ class TestDeduplicationStats:
         """Test recording a unique computation request."""
         # Arrange
         stats = DeduplicationStats()
-        
+
         # Act
         await stats.record_request(was_deduplicated=False)
-        
+
         # Assert
         assert stats.total_requests == 1
         assert stats.deduplicated_requests == 0
@@ -377,19 +370,19 @@ class TestDeduplicationStats:
         # Arrange
         stats = DeduplicationStats()
         await stats.record_request(was_deduplicated=False)  # unique
-        await stats.record_request(was_deduplicated=True)   # deduplicated
-        await stats.record_request(was_deduplicated=True)   # deduplicated
-        
+        await stats.record_request(was_deduplicated=True)  # deduplicated
+        await stats.record_request(was_deduplicated=True)  # deduplicated
+
         # Act
         result = await stats.get_stats()
-        
+
         # Assert
         expected = {
             "total_requests": 3,
             "deduplicated_requests": 2,
             "unique_computations": 1,
-            "deduplication_ratio": 2/3,
-            "efficiency_percentage": (2/3) * 100
+            "deduplication_ratio": 2 / 3,
+            "efficiency_percentage": (2 / 3) * 100,
         }
         assert result == expected
 
@@ -398,17 +391,17 @@ class TestDeduplicationStats:
         """Test getting statistics with no recorded data."""
         # Arrange
         stats = DeduplicationStats()
-        
+
         # Act
         result = await stats.get_stats()
-        
+
         # Assert
         expected = {
             "total_requests": 0,
             "deduplicated_requests": 0,
             "unique_computations": 0,
             "deduplication_ratio": 0.0,
-            "efficiency_percentage": 0.0
+            "efficiency_percentage": 0.0,
         }
         assert result == expected
 
@@ -419,10 +412,10 @@ class TestDeduplicationStats:
         stats = DeduplicationStats()
         await stats.record_request(was_deduplicated=False)
         await stats.record_request(was_deduplicated=True)
-        
+
         # Act
         await stats.reset_stats()
-        
+
         # Assert
         assert stats.total_requests == 0
         assert stats.deduplicated_requests == 0
@@ -436,7 +429,7 @@ class TestInstrumentedDeduplicationManager:
         """Test InstrumentedDeduplicationManager initialization."""
         # Arrange & Act
         manager = InstrumentedDeduplicationManager()
-        
+
         # Assert
         assert isinstance(manager.stats, DeduplicationStats)
         assert manager._futures == {}
@@ -447,14 +440,14 @@ class TestInstrumentedDeduplicationManager:
         # Arrange
         manager = InstrumentedDeduplicationManager()
         key = "test:key"
-        
+
         async def mock_compute() -> str:
             return "result"
-        
+
         # Act
         result = await manager.deduplicate(key, mock_compute)
         stats = await manager.get_stats()
-        
+
         # Assert
         assert result == "result"
         assert stats["total_requests"] == 1
@@ -469,25 +462,25 @@ class TestInstrumentedDeduplicationManager:
         key = "test:key"
         computation_started = asyncio.Event()
         computation_continue = asyncio.Event()
-        
+
         async def slow_compute() -> str:
             computation_started.set()
             await computation_continue.wait()
             return "result"
-        
+
         # Act - start first computation
         task1 = asyncio.create_task(manager.deduplicate(key, slow_compute))
         await computation_started.wait()
-        
+
         # Start second computation that should be deduplicated
         task2 = asyncio.create_task(manager.deduplicate(key, slow_compute))
-        
+
         # Let computations finish
         computation_continue.set()
         results = await asyncio.gather(task1, task2)
-        
+
         stats = await manager.get_stats()
-        
+
         # Assert
         assert all(result == "result" for result in results)
         assert stats["total_requests"] == 2
@@ -499,10 +492,10 @@ class TestInstrumentedDeduplicationManager:
         """Test stats property access."""
         # Arrange
         manager = InstrumentedDeduplicationManager()
-        
+
         # Act
         stats_obj = manager.stats
-        
+
         # Assert
         assert isinstance(stats_obj, DeduplicationStats)
         assert stats_obj is manager._stats
@@ -512,18 +505,18 @@ class TestInstrumentedDeduplicationManager:
         """Test resetting statistics in instrumented manager."""
         # Arrange
         manager = InstrumentedDeduplicationManager()
-        
+
         async def mock_compute() -> str:
             return "result"
-        
+
         # Record some data
         await manager.deduplicate("key1", mock_compute)
         await manager.deduplicate("key2", mock_compute)
-        
+
         # Act
         await manager.reset_stats()
         stats = await manager.get_stats()
-        
+
         # Assert
         assert stats["total_requests"] == 0
         assert stats["deduplicated_requests"] == 0
@@ -540,22 +533,19 @@ class TestDeduplicationIntegration:
         manager = InstrumentedDeduplicationManager()
         key = "test:key"
         computation_count = 0
-        
+
         async def mock_compute() -> str:
             nonlocal computation_count
             computation_count += 1
             await asyncio.sleep(0.01)  # Simulate work
             return f"result_{computation_count}"
-        
+
         # Act - create many concurrent requests
-        tasks = [
-            asyncio.create_task(manager.deduplicate(key, mock_compute))
-            for _ in range(10)
-        ]
+        tasks = [asyncio.create_task(manager.deduplicate(key, mock_compute)) for _ in range(10)]
         results = await asyncio.gather(*tasks)
-        
+
         stats = await manager.get_stats()
-        
+
         # Assert
         # All requests should get the same result
         assert all(result == "result_1" for result in results)
@@ -572,44 +562,40 @@ class TestDeduplicationIntegration:
         # Arrange
         manager = InstrumentedDeduplicationManager()
         computation_counts: dict[str, int] = {"key1": 0, "key2": 0}
-        
+
         async def mock_compute_key1() -> str:
             computation_counts["key1"] += 1
             await asyncio.sleep(0.01)
             return f"result_key1_{computation_counts['key1']}"
-        
+
         async def mock_compute_key2() -> str:
             computation_counts["key2"] += 1
             await asyncio.sleep(0.01)
             return f"result_key2_{computation_counts['key2']}"
-        
+
         # Act - create concurrent requests for different keys
         tasks = []
         for i in range(5):
-            tasks.append(asyncio.create_task(
-                manager.deduplicate("key1", mock_compute_key1)
-            ))
-            tasks.append(asyncio.create_task(
-                manager.deduplicate("key2", mock_compute_key2)
-            ))
-        
+            tasks.append(asyncio.create_task(manager.deduplicate("key1", mock_compute_key1)))
+            tasks.append(asyncio.create_task(manager.deduplicate("key2", mock_compute_key2)))
+
         results = await asyncio.gather(*tasks)
         stats = await manager.get_stats()
-        
+
         # Assert
         # Should have results from both keys
         key1_results = [r for r in results if "key1" in r]
         key2_results = [r for r in results if "key2" in r]
-        
+
         assert len(key1_results) == 5
         assert len(key2_results) == 5
         assert all(result == "result_key1_1" for result in key1_results)
         assert all(result == "result_key2_1" for result in key2_results)
-        
+
         # Each key should have been computed only once
         assert computation_counts["key1"] == 1
         assert computation_counts["key2"] == 1
-        
+
         # Statistics should reflect two unique computations and 8 deduplicated requests
         assert stats["total_requests"] == 10
         assert stats["unique_computations"] == 2
@@ -621,23 +607,20 @@ class TestDeduplicationIntegration:
         # Arrange
         manager = InstrumentedDeduplicationManager()
         key = "test:key"
-        
+
         async def failing_compute() -> str:
             await asyncio.sleep(0.01)
             raise ValueError("Computation failed")
-        
+
         # Act - multiple concurrent requests that will fail
-        tasks = [
-            asyncio.create_task(manager.deduplicate(key, failing_compute))
-            for _ in range(3)
-        ]
-        
+        tasks = [asyncio.create_task(manager.deduplicate(key, failing_compute)) for _ in range(3)]
+
         # All should fail with the same error
         with pytest.raises(ValueError):
             await asyncio.gather(*tasks)
-        
+
         stats = await manager.get_stats()
-        
+
         # Assert
         # Statistics should still be recorded even for failed computations
         assert stats["total_requests"] == 3

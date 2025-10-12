@@ -11,13 +11,13 @@ from unittest.mock import Mock, patch
 import pytest
 
 from dapr_state_cache.observability import (
-    DefaultObservabilityHooks,
-    SilentObservabilityHooks,
-    CompositeObservabilityHooks,
-    CacheStats,
-    TopKeysResult,
     CacheMetrics,
+    CacheStats,
+    CompositeObservabilityHooks,
+    DefaultObservabilityHooks,
     MetricsCollectorHooks,
+    SilentObservabilityHooks,
+    TopKeysResult,
 )
 
 
@@ -28,7 +28,7 @@ class TestCacheStats:
         """Test CacheStats initialization with defaults."""
         # Arrange & Act
         stats = CacheStats()
-        
+
         # Assert
         assert stats.hits == 0
         assert stats.misses == 0
@@ -44,7 +44,7 @@ class TestCacheStats:
         hit_latencies = [0.1, 0.2]
         miss_latencies = [0.5, 0.6]
         write_sizes = [100, 200]
-        
+
         # Act
         stats = CacheStats(
             hits=10,
@@ -53,9 +53,9 @@ class TestCacheStats:
             errors=1,
             hit_latencies=hit_latencies,
             miss_latencies=miss_latencies,
-            write_sizes=write_sizes
+            write_sizes=write_sizes,
         )
-        
+
         # Assert
         assert stats.hits == 10
         assert stats.misses == 5
@@ -69,10 +69,10 @@ class TestCacheStats:
         """Test total_operations property calculation."""
         # Arrange
         stats = CacheStats(hits=10, misses=5)
-        
+
         # Act
         result = stats.total_operations
-        
+
         # Assert
         assert result == 15
 
@@ -80,10 +80,10 @@ class TestCacheStats:
         """Test hit_ratio property with operations."""
         # Arrange
         stats = CacheStats(hits=8, misses=2)
-        
+
         # Act
         result = stats.hit_ratio
-        
+
         # Assert
         assert result == 0.8
 
@@ -91,10 +91,10 @@ class TestCacheStats:
         """Test hit_ratio property with no operations."""
         # Arrange
         stats = CacheStats(hits=0, misses=0)
-        
+
         # Act
         result = stats.hit_ratio
-        
+
         # Assert
         assert result == 0.0
 
@@ -102,10 +102,10 @@ class TestCacheStats:
         """Test miss_ratio property calculation."""
         # Arrange
         stats = CacheStats(hits=7, misses=3)
-        
+
         # Act
         result = stats.miss_ratio
-        
+
         # Assert
         assert result == pytest.approx(0.3)
 
@@ -113,10 +113,10 @@ class TestCacheStats:
         """Test average hit latency calculation with data."""
         # Arrange
         stats = CacheStats(hit_latencies=[0.1, 0.2, 0.3])  # 0.2s average
-        
+
         # Act
         result = stats.average_hit_latency_ms
-        
+
         # Assert
         assert result == pytest.approx(200.0)  # 0.2s * 1000 = 200ms
 
@@ -124,10 +124,10 @@ class TestCacheStats:
         """Test average hit latency with no data."""
         # Arrange
         stats = CacheStats(hit_latencies=[])
-        
+
         # Act
         result = stats.average_hit_latency_ms
-        
+
         # Assert
         assert result == 0.0
 
@@ -135,10 +135,10 @@ class TestCacheStats:
         """Test average miss latency calculation with data."""
         # Arrange
         stats = CacheStats(miss_latencies=[0.4, 0.6])  # 0.5s average
-        
+
         # Act
         result = stats.average_miss_latency_ms
-        
+
         # Assert
         assert result == 500.0  # 0.5s * 1000 = 500ms
 
@@ -146,10 +146,10 @@ class TestCacheStats:
         """Test average miss latency with no data."""
         # Arrange
         stats = CacheStats(miss_latencies=[])
-        
+
         # Act
         result = stats.average_miss_latency_ms
-        
+
         # Assert
         assert result == 0.0
 
@@ -157,10 +157,10 @@ class TestCacheStats:
         """Test average write size calculation with data."""
         # Arrange
         stats = CacheStats(write_sizes=[100, 200, 300])  # 200 bytes average
-        
+
         # Act
         result = stats.average_write_size_bytes
-        
+
         # Assert
         assert result == 200.0
 
@@ -168,10 +168,10 @@ class TestCacheStats:
         """Test average write size with no data."""
         # Arrange
         stats = CacheStats(write_sizes=[])
-        
+
         # Act
         result = stats.average_write_size_bytes
-        
+
         # Assert
         assert result == 0.0
 
@@ -179,10 +179,10 @@ class TestCacheStats:
         """Test total write size calculation."""
         # Arrange
         stats = CacheStats(write_sizes=[100, 200, 300])
-        
+
         # Act
         result = stats.total_write_size_bytes
-        
+
         # Assert
         assert result == 600
 
@@ -194,7 +194,7 @@ class TestTopKeysResult:
         """Test TopKeysResult initialization."""
         # Arrange & Act
         result = TopKeysResult(key="test:key", count=42, percentage=75.5)
-        
+
         # Assert
         assert result.key == "test:key"
         assert result.count == 42
@@ -208,7 +208,7 @@ class TestDefaultObservabilityHooks:
         """Test initialization with default log level."""
         # Arrange & Act
         hooks = DefaultObservabilityHooks()
-        
+
         # Assert
         assert hooks._log_level == logging.DEBUG
 
@@ -216,88 +216,68 @@ class TestDefaultObservabilityHooks:
         """Test initialization with custom log level."""
         # Arrange
         custom_level = logging.INFO
-        
+
         # Act
         hooks = DefaultObservabilityHooks(log_level=custom_level)
-        
+
         # Assert
         assert hooks._log_level == custom_level
 
-    @patch('dapr_state_cache.observability.hooks.logger')
+    @patch("dapr_state_cache.observability.hooks.logger")
     def test_on_cache_hit_logging(self, mock_logger: Mock) -> None:
         """Test cache hit logging."""
         # Arrange
         hooks = DefaultObservabilityHooks()
         key = "test:key"
         latency = 0.025  # 25ms
-        
+
         # Act
         hooks.on_cache_hit(key, latency)
-        
-        # Assert
-        mock_logger.log.assert_called_once_with(
-            logging.DEBUG,
-            "Cache HIT for key '%s' (latency: %.3fms)",
-            key,
-            25.0
-        )
 
-    @patch('dapr_state_cache.observability.hooks.logger')
+        # Assert
+        mock_logger.log.assert_called_once_with(logging.DEBUG, "Cache HIT for key '%s' (latency: %.3fms)", key, 25.0)
+
+    @patch("dapr_state_cache.observability.hooks.logger")
     def test_on_cache_miss_logging(self, mock_logger: Mock) -> None:
         """Test cache miss logging."""
         # Arrange
         hooks = DefaultObservabilityHooks()
         key = "test:key"
         latency = 0.150  # 150ms
-        
+
         # Act
         hooks.on_cache_miss(key, latency)
-        
-        # Assert
-        mock_logger.log.assert_called_once_with(
-            logging.DEBUG,
-            "Cache MISS for key '%s' (latency: %.3fms)",
-            key,
-            150.0
-        )
 
-    @patch('dapr_state_cache.observability.hooks.logger')
+        # Assert
+        mock_logger.log.assert_called_once_with(logging.DEBUG, "Cache MISS for key '%s' (latency: %.3fms)", key, 150.0)
+
+    @patch("dapr_state_cache.observability.hooks.logger")
     def test_on_cache_write_logging(self, mock_logger: Mock) -> None:
         """Test cache write logging."""
         # Arrange
         hooks = DefaultObservabilityHooks()
         key = "test:key"
         size = 1024
-        
+
         # Act
         hooks.on_cache_write(key, size)
-        
-        # Assert
-        mock_logger.log.assert_called_once_with(
-            logging.DEBUG,
-            "Cache WRITE for key '%s' (size: %d bytes)",
-            key,
-            size
-        )
 
-    @patch('dapr_state_cache.observability.hooks.logger')
+        # Assert
+        mock_logger.log.assert_called_once_with(logging.DEBUG, "Cache WRITE for key '%s' (size: %d bytes)", key, size)
+
+    @patch("dapr_state_cache.observability.hooks.logger")
     def test_on_cache_error_logging(self, mock_logger: Mock) -> None:
         """Test cache error logging."""
         # Arrange
         hooks = DefaultObservabilityHooks()
         key = "test:key"
         error = ValueError("Test error")
-        
+
         # Act
         hooks.on_cache_error(key, error)
-        
+
         # Assert
-        mock_logger.error.assert_called_once_with(
-            "Cache ERROR for key '%s': %s (%s)",
-            key,
-            "Test error",
-            "ValueError"
-        )
+        mock_logger.error.assert_called_once_with("Cache ERROR for key '%s': %s (%s)", key, "Test error", "ValueError")
 
 
 class TestSilentObservabilityHooks:
@@ -307,7 +287,7 @@ class TestSilentObservabilityHooks:
         """Test that silent hooks perform no operation on cache hit."""
         # Arrange
         hooks = SilentObservabilityHooks()
-        
+
         # Act & Assert - should not raise exception
         hooks.on_cache_hit("key", 0.1)
 
@@ -315,7 +295,7 @@ class TestSilentObservabilityHooks:
         """Test that silent hooks perform no operation on cache miss."""
         # Arrange
         hooks = SilentObservabilityHooks()
-        
+
         # Act & Assert - should not raise exception
         hooks.on_cache_miss("key", 0.1)
 
@@ -323,7 +303,7 @@ class TestSilentObservabilityHooks:
         """Test that silent hooks perform no operation on cache write."""
         # Arrange
         hooks = SilentObservabilityHooks()
-        
+
         # Act & Assert - should not raise exception
         hooks.on_cache_write("key", 100)
 
@@ -332,7 +312,7 @@ class TestSilentObservabilityHooks:
         # Arrange
         hooks = SilentObservabilityHooks()
         error = Exception("test")
-        
+
         # Act & Assert - should not raise exception
         hooks.on_cache_error("key", error)
 
@@ -344,13 +324,14 @@ class TestCompositeObservabilityHooks:
         """Test composite hooks initialization."""
         # Arrange
         from dapr_state_cache.protocols import ObservabilityHooks
+
         hook1 = Mock(spec=ObservabilityHooks)
         hook2 = Mock(spec=ObservabilityHooks)
         hooks_list = [hook1, hook2]
-        
+
         # Act
         composite = CompositeObservabilityHooks(hooks_list)
-        
+
         # Assert
         assert composite._hooks == hooks_list
 
@@ -358,36 +339,38 @@ class TestCompositeObservabilityHooks:
         """Test that cache hit is delegated to all hooks."""
         # Arrange
         from dapr_state_cache.protocols import ObservabilityHooks
+
         hook1 = Mock(spec=ObservabilityHooks)
         hook2 = Mock(spec=ObservabilityHooks)
         composite = CompositeObservabilityHooks([hook1, hook2])
-        
+
         key = "test:key"
         latency = 0.1
-        
+
         # Act
         composite.on_cache_hit(key, latency)
-        
+
         # Assert
         hook1.on_cache_hit.assert_called_once_with(key, latency)
         hook2.on_cache_hit.assert_called_once_with(key, latency)
 
-    @patch('dapr_state_cache.observability.hooks.logger')
+    @patch("dapr_state_cache.observability.hooks.logger")
     def test_composite_on_cache_hit_handles_hook_errors(self, mock_logger: Mock) -> None:
         """Test that hook errors are handled gracefully."""
         # Arrange
         from dapr_state_cache.protocols import ObservabilityHooks
+
         hook1 = Mock(spec=ObservabilityHooks)
         hook1.on_cache_hit.side_effect = Exception("Hook error")
         hook2 = Mock(spec=ObservabilityHooks)
-        
+
         composite = CompositeObservabilityHooks([hook1, hook2])
         key = "test:key"
         latency = 0.1
-        
+
         # Act
         composite.on_cache_hit(key, latency)
-        
+
         # Assert
         hook1.on_cache_hit.assert_called_once_with(key, latency)
         hook2.on_cache_hit.assert_called_once_with(key, latency)  # Should still be called
@@ -397,16 +380,17 @@ class TestCompositeObservabilityHooks:
         """Test that cache miss is delegated to all hooks."""
         # Arrange
         from dapr_state_cache.protocols import ObservabilityHooks
+
         hook1 = Mock(spec=ObservabilityHooks)
         hook2 = Mock(spec=ObservabilityHooks)
         composite = CompositeObservabilityHooks([hook1, hook2])
-        
+
         key = "test:key"
         latency = 0.2
-        
+
         # Act
         composite.on_cache_miss(key, latency)
-        
+
         # Assert
         hook1.on_cache_miss.assert_called_once_with(key, latency)
         hook2.on_cache_miss.assert_called_once_with(key, latency)
@@ -415,16 +399,17 @@ class TestCompositeObservabilityHooks:
         """Test that cache write is delegated to all hooks."""
         # Arrange
         from dapr_state_cache.protocols import ObservabilityHooks
+
         hook1 = Mock(spec=ObservabilityHooks)
         hook2 = Mock(spec=ObservabilityHooks)
         composite = CompositeObservabilityHooks([hook1, hook2])
-        
+
         key = "test:key"
         size = 500
-        
+
         # Act
         composite.on_cache_write(key, size)
-        
+
         # Assert
         hook1.on_cache_write.assert_called_once_with(key, size)
         hook2.on_cache_write.assert_called_once_with(key, size)
@@ -433,16 +418,17 @@ class TestCompositeObservabilityHooks:
         """Test that cache error is delegated to all hooks."""
         # Arrange
         from dapr_state_cache.protocols import ObservabilityHooks
+
         hook1 = Mock(spec=ObservabilityHooks)
         hook2 = Mock(spec=ObservabilityHooks)
         composite = CompositeObservabilityHooks([hook1, hook2])
-        
+
         key = "test:key"
         error = ValueError("test")
-        
+
         # Act
         composite.on_cache_error(key, error)
-        
+
         # Assert
         hook1.on_cache_error.assert_called_once_with(key, error)
         hook2.on_cache_error.assert_called_once_with(key, error)
@@ -451,13 +437,14 @@ class TestCompositeObservabilityHooks:
         """Test adding hook to composite."""
         # Arrange
         from dapr_state_cache.protocols import ObservabilityHooks
+
         hook1 = Mock(spec=ObservabilityHooks)
         hook2 = Mock(spec=ObservabilityHooks)
         composite = CompositeObservabilityHooks([hook1])
-        
+
         # Act
         composite.add_hook(hook2)
-        
+
         # Assert
         assert hook2 in composite._hooks
         assert len(composite._hooks) == 2
@@ -466,13 +453,14 @@ class TestCompositeObservabilityHooks:
         """Test successful hook removal."""
         # Arrange
         from dapr_state_cache.protocols import ObservabilityHooks
+
         hook1 = Mock(spec=ObservabilityHooks)
         hook2 = Mock(spec=ObservabilityHooks)
         composite = CompositeObservabilityHooks([hook1, hook2])
-        
+
         # Act
         result = composite.remove_hook(hook1)
-        
+
         # Assert
         assert result is True
         assert hook1 not in composite._hooks
@@ -482,13 +470,14 @@ class TestCompositeObservabilityHooks:
         """Test hook removal when hook not found."""
         # Arrange
         from dapr_state_cache.protocols import ObservabilityHooks
+
         hook1 = Mock(spec=ObservabilityHooks)
         hook2 = Mock(spec=ObservabilityHooks)
         composite = CompositeObservabilityHooks([hook1])
-        
+
         # Act
         result = composite.remove_hook(hook2)
-        
+
         # Assert
         assert result is False
         assert len(composite._hooks) == 1
@@ -501,7 +490,7 @@ class TestCacheMetrics:
         """Test CacheMetrics initialization with defaults."""
         # Arrange & Act
         metrics = CacheMetrics()
-        
+
         # Assert
         assert metrics._max_latency_samples == 1000
         assert metrics._overall_stats.hits == 0
@@ -511,10 +500,10 @@ class TestCacheMetrics:
         """Test CacheMetrics initialization with custom sample limit."""
         # Arrange
         max_samples = 500
-        
+
         # Act
         metrics = CacheMetrics(max_latency_samples=max_samples)
-        
+
         # Assert
         assert metrics._max_latency_samples == max_samples
 
@@ -524,14 +513,14 @@ class TestCacheMetrics:
         metrics = CacheMetrics()
         key = "test:key"
         latency = 0.1
-        
+
         # Act
         metrics.record_hit(key, latency)
-        
+
         # Assert
         assert metrics._overall_stats.hits == 1
         assert metrics._overall_stats.hit_latencies == [latency]
-        
+
         assert metrics._key_stats[key].hits == 1
         assert metrics._key_stats[key].hit_latencies == [latency]
 
@@ -541,14 +530,14 @@ class TestCacheMetrics:
         metrics = CacheMetrics()
         key = "test:key"
         latency = 0.2
-        
+
         # Act
         metrics.record_miss(key, latency)
-        
+
         # Assert
         assert metrics._overall_stats.misses == 1
         assert metrics._overall_stats.miss_latencies == [latency]
-        
+
         assert metrics._key_stats[key].misses == 1
         assert metrics._key_stats[key].miss_latencies == [latency]
 
@@ -558,14 +547,14 @@ class TestCacheMetrics:
         metrics = CacheMetrics()
         key = "test:key"
         size = 1024
-        
+
         # Act
         metrics.record_write(key, size)
-        
+
         # Assert
         assert metrics._overall_stats.writes == 1
         assert metrics._overall_stats.write_sizes == [size]
-        
+
         assert metrics._key_stats[key].writes == 1
         assert metrics._key_stats[key].write_sizes == [size]
 
@@ -575,10 +564,10 @@ class TestCacheMetrics:
         metrics = CacheMetrics()
         key = "test:key"
         error = ValueError("test")
-        
+
         # Act
         metrics.record_error(key, error)
-        
+
         # Assert
         assert metrics._overall_stats.errors == 1
         assert metrics._key_stats[key].errors == 1
@@ -589,16 +578,16 @@ class TestCacheMetrics:
         metrics = CacheMetrics()
         metrics.record_hit("key1", 0.1)
         metrics.record_miss("key2", 0.2)
-        
+
         # Act
         stats = metrics.get_overall_stats()
-        
+
         # Assert
         assert stats.hits == 1
         assert stats.misses == 1
         assert stats.hit_latencies == [0.1]
         assert stats.miss_latencies == [0.2]
-        
+
         # Modifying returned stats should not affect internal stats
         stats.hits = 999
         assert metrics._overall_stats.hits == 1
@@ -610,10 +599,10 @@ class TestCacheMetrics:
         key = "test:key"
         metrics.record_hit(key, 0.1)
         metrics.record_write(key, 500)
-        
+
         # Act
         stats = metrics.get_key_stats(key)
-        
+
         # Assert
         assert stats is not None
         assert stats.hits == 1
@@ -625,10 +614,10 @@ class TestCacheMetrics:
         """Test getting statistics for non-existent key."""
         # Arrange
         metrics = CacheMetrics()
-        
+
         # Act
         stats = metrics.get_key_stats("nonexistent")
-        
+
         # Assert
         assert stats is None
 
@@ -638,10 +627,10 @@ class TestCacheMetrics:
         metrics = CacheMetrics()
         metrics.record_hit("key1", 0.1)
         metrics.record_miss("key2", 0.2)
-        
+
         # Act
         all_stats = metrics.get_all_key_stats()
-        
+
         # Assert
         assert len(all_stats) == 2
         assert "key1" in all_stats
@@ -659,10 +648,10 @@ class TestCacheMetrics:
         metrics.record_hit("key3", 0.1)
         metrics.record_hit("key3", 0.1)
         metrics.record_hit("key3", 0.1)  # 3 hits
-        
+
         # Act
         top_keys = metrics.get_top_keys_by_hits(limit=2)
-        
+
         # Assert
         assert len(top_keys) == 2
         assert top_keys[0].key == "key3"
@@ -679,10 +668,10 @@ class TestCacheMetrics:
         metrics.record_miss("key1", 0.1)  # 1 miss
         metrics.record_miss("key2", 0.1)
         metrics.record_miss("key2", 0.1)  # 2 misses
-        
+
         # Act
         top_keys = metrics.get_top_keys_by_misses()
-        
+
         # Assert
         assert len(top_keys) == 2
         assert top_keys[0].key == "key2"
@@ -696,10 +685,10 @@ class TestCacheMetrics:
         metrics.record_write("key1", 100)
         metrics.record_write("key1", 200)  # 2 writes
         metrics.record_write("key2", 300)  # 1 write
-        
+
         # Act
         top_keys = metrics.get_top_keys_by_writes()
-        
+
         # Assert
         assert len(top_keys) == 2
         assert top_keys[0].key == "key1"
@@ -712,14 +701,14 @@ class TestCacheMetrics:
         metrics = CacheMetrics()
         error1 = ValueError("error1")
         error2 = ValueError("error2")
-        
+
         metrics.record_error("key1", error1)
         metrics.record_error("key1", error1)  # 2 errors
         metrics.record_error("key2", error2)  # 1 error
-        
+
         # Act
         top_keys = metrics.get_top_keys_by_errors()
-        
+
         # Assert
         assert len(top_keys) == 2
         assert top_keys[0].key == "key1"
@@ -732,10 +721,10 @@ class TestCacheMetrics:
         metrics = CacheMetrics()
         metrics.record_hit("key1", 0.1)
         metrics.record_miss("key2", 0.2)
-        
+
         # Act
         metrics.reset_stats()
-        
+
         # Assert
         stats = metrics.get_overall_stats()
         assert stats.hits == 0
@@ -748,10 +737,10 @@ class TestCacheMetrics:
         metrics = CacheMetrics()
         metrics.record_hit("key1", 0.1)
         metrics.record_hit("key2", 0.1)
-        
+
         # Act
         result = metrics.reset_key_stats("key1")
-        
+
         # Assert
         assert result is True
         assert "key1" not in metrics._key_stats
@@ -761,10 +750,10 @@ class TestCacheMetrics:
         """Test resetting stats for non-existent key."""
         # Arrange
         metrics = CacheMetrics()
-        
+
         # Act
         result = metrics.reset_key_stats("nonexistent")
-        
+
         # Assert
         assert result is False
 
@@ -773,17 +762,17 @@ class TestCacheMetrics:
         # Arrange
         metrics = CacheMetrics(max_latency_samples=3)
         key = "test:key"
-        
+
         # Record more samples than limit
         metrics.record_hit(key, 0.1)
         metrics.record_hit(key, 0.2)
         metrics.record_hit(key, 0.3)
         metrics.record_hit(key, 0.4)
         metrics.record_hit(key, 0.5)
-        
+
         # Act
         key_stats = metrics.get_key_stats(key)
-        
+
         # Assert
         assert key_stats is not None
         assert len(key_stats.hit_latencies) == 3
@@ -795,15 +784,15 @@ class TestCacheMetrics:
         # Arrange
         metrics = CacheMetrics(max_latency_samples=2)
         key = "test:key"
-        
+
         # Record more samples than limit
         metrics.record_write(key, 100)
         metrics.record_write(key, 200)
         metrics.record_write(key, 300)
-        
+
         # Act
         key_stats = metrics.get_key_stats(key)
-        
+
         # Assert
         assert key_stats is not None
         assert len(key_stats.write_sizes) == 2
@@ -818,7 +807,7 @@ class TestMetricsCollectorHooks:
         """Test initialization with default CacheMetrics."""
         # Arrange & Act
         hooks = MetricsCollectorHooks()
-        
+
         # Assert
         assert isinstance(hooks.metrics, CacheMetrics)
 
@@ -826,10 +815,10 @@ class TestMetricsCollectorHooks:
         """Test initialization with custom CacheMetrics."""
         # Arrange
         custom_metrics = CacheMetrics(max_latency_samples=100)
-        
+
         # Act
         hooks = MetricsCollectorHooks(custom_metrics)
-        
+
         # Assert
         assert hooks.metrics is custom_metrics
 
@@ -840,10 +829,10 @@ class TestMetricsCollectorHooks:
         hooks = MetricsCollectorHooks(metrics)
         key = "test:key"
         latency = 0.1
-        
+
         # Act
         hooks.on_cache_hit(key, latency)
-        
+
         # Assert
         assert metrics.get_overall_stats().hits == 1
 
@@ -854,10 +843,10 @@ class TestMetricsCollectorHooks:
         hooks = MetricsCollectorHooks(metrics)
         key = "test:key"
         latency = 0.2
-        
+
         # Act
         hooks.on_cache_miss(key, latency)
-        
+
         # Assert
         assert metrics.get_overall_stats().misses == 1
 
@@ -868,10 +857,10 @@ class TestMetricsCollectorHooks:
         hooks = MetricsCollectorHooks(metrics)
         key = "test:key"
         size = 1024
-        
+
         # Act
         hooks.on_cache_write(key, size)
-        
+
         # Assert
         assert metrics.get_overall_stats().writes == 1
 
@@ -882,10 +871,10 @@ class TestMetricsCollectorHooks:
         hooks = MetricsCollectorHooks(metrics)
         key = "test:key"
         error = ValueError("test")
-        
+
         # Act
         hooks.on_cache_error(key, error)
-        
+
         # Assert
         assert metrics.get_overall_stats().errors == 1
 
@@ -894,10 +883,10 @@ class TestMetricsCollectorHooks:
         # Arrange
         custom_metrics = CacheMetrics()
         hooks = MetricsCollectorHooks(custom_metrics)
-        
+
         # Act
         result = hooks.metrics
-        
+
         # Assert
         assert result is custom_metrics
 
@@ -910,27 +899,27 @@ class TestObservabilityIntegration:
         # Arrange
         metrics = CacheMetrics()
         hooks = MetricsCollectorHooks(metrics)
-        
+
         # Act - simulate cache operations
         hooks.on_cache_miss("key1", 0.1)
         hooks.on_cache_hit("key1", 0.05)
         hooks.on_cache_write("key1", 500)
         hooks.on_cache_error("key2", ValueError("error"))
-        
+
         # Assert
         overall_stats = metrics.get_overall_stats()
         assert overall_stats.hits == 1
         assert overall_stats.misses == 1
         assert overall_stats.writes == 1
         assert overall_stats.errors == 1
-        
+
         key1_stats = metrics.get_key_stats("key1")
         assert key1_stats is not None
         assert key1_stats.hits == 1
         assert key1_stats.misses == 1
         assert key1_stats.writes == 1
         assert key1_stats.errors == 0  # Error was for key2
-        
+
         key2_stats = metrics.get_key_stats("key2")
         assert key2_stats is not None
         assert key2_stats.errors == 1
@@ -941,15 +930,15 @@ class TestObservabilityIntegration:
         metrics = CacheMetrics()
         metrics_hooks = MetricsCollectorHooks(metrics)
         logging_hooks = DefaultObservabilityHooks()
-        
+
         composite = CompositeObservabilityHooks([metrics_hooks, logging_hooks])
-        
+
         # Act
         composite.on_cache_hit("key1", 0.1)
-        
+
         # Assert
         # Metrics should be recorded
         assert metrics.get_overall_stats().hits == 1
-        
+
         # Both hooks should be in composite
         assert len(composite._hooks) == 2

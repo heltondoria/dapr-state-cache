@@ -9,12 +9,12 @@ import pytest
 
 from dapr_state_cache.core.validators import (
     ValidationError,
-    validate_ttl_seconds,
-    validate_store_name,
-    validate_key_prefix,
-    validate_crypto_component_name,
     validate_cache_parameters,
+    validate_crypto_component_name,
     validate_invalidation_parameters,
+    validate_key_prefix,
+    validate_store_name,
+    validate_ttl_seconds,
 )
 
 
@@ -30,7 +30,7 @@ class TestTTLValidation:
         """Test TTL validation with positive values."""
         # Arrange
         valid_ttls = [1, 60, 3600, 86400, 604800]
-        
+
         # Act & Assert - should not raise
         for ttl in valid_ttls:
             validate_ttl_seconds(ttl)
@@ -45,7 +45,7 @@ class TestTTLValidation:
         """Test TTL validation rejects negative values."""
         # Arrange
         invalid_ttls = [-1, -10, -3600]
-        
+
         # Act & Assert
         for ttl in invalid_ttls:
             with pytest.raises(ValidationError, match="ttl_seconds must be >= 1"):
@@ -55,7 +55,7 @@ class TestTTLValidation:
         """Test TTL validation rejects non-integer types."""
         # Arrange
         invalid_types = ["60", 60.0, True, [60], {"ttl": 60}]
-        
+
         # Act & Assert
         for invalid_ttl in invalid_types:
             with pytest.raises(ValidationError, match="ttl_seconds must be int or None"):
@@ -69,7 +69,7 @@ class TestStoreNameValidation:
         """Test store name validation with valid names."""
         # Arrange
         valid_names = ["redis-cache", "mongodb-store", "cache", "my_store_123"]
-        
+
         # Act & Assert - should not raise
         for name in valid_names:
             validate_store_name(name)
@@ -84,7 +84,7 @@ class TestStoreNameValidation:
         """Test store name validation rejects whitespace-only."""
         # Arrange
         whitespace_names = [" ", "\t", "\n", "   ", "\t\n "]
-        
+
         # Act & Assert
         for name in whitespace_names:
             with pytest.raises(ValidationError, match="store_name cannot be empty"):
@@ -94,7 +94,7 @@ class TestStoreNameValidation:
         """Test store name validation rejects non-string types."""
         # Arrange
         invalid_types = [123, True, ["redis"], {"name": "redis"}, None]
-        
+
         # Act & Assert
         for invalid_name in invalid_types:
             with pytest.raises(ValidationError, match="store_name must be str"):
@@ -108,7 +108,7 @@ class TestKeyPrefixValidation:
         """Test key prefix validation with valid prefixes."""
         # Arrange
         valid_prefixes = ["cache", "myapp", "user-cache", "api_v1"]
-        
+
         # Act & Assert - should not raise
         for prefix in valid_prefixes:
             validate_key_prefix(prefix)
@@ -123,7 +123,7 @@ class TestKeyPrefixValidation:
         """Test key prefix validation rejects whitespace-only."""
         # Arrange
         whitespace_prefixes = [" ", "\t", "\n", "   "]
-        
+
         # Act & Assert
         for prefix in whitespace_prefixes:
             with pytest.raises(ValidationError, match="key_prefix cannot be empty"):
@@ -133,7 +133,7 @@ class TestKeyPrefixValidation:
         """Test key prefix validation rejects non-string types."""
         # Arrange
         invalid_types = [123, True, ["cache"], None]
-        
+
         # Act & Assert
         for invalid_prefix in invalid_types:
             with pytest.raises(ValidationError, match="key_prefix must be str"):
@@ -153,7 +153,7 @@ class TestCryptoComponentNameValidation:
         """Test crypto component validation with valid names."""
         # Arrange
         valid_names = ["vault-kms", "azure-keyvault", "aws-kms", "crypto-component"]
-        
+
         # Act & Assert - should not raise
         for name in valid_names:
             validate_crypto_component_name(True, name)
@@ -168,7 +168,7 @@ class TestCryptoComponentNameValidation:
         """Test crypto component validation rejects whitespace-only."""
         # Arrange
         whitespace_names = [" ", "\t", "   "]
-        
+
         # Act & Assert
         for name in whitespace_names:
             with pytest.raises(ValidationError, match="crypto_component_name cannot be empty"):
@@ -178,7 +178,7 @@ class TestCryptoComponentNameValidation:
         """Test crypto component validation rejects non-string types."""
         # Arrange
         invalid_types = [123, True, ["vault"], {"name": "vault"}]
-        
+
         # Act & Assert
         for invalid_name in invalid_types:
             with pytest.raises(ValidationError, match="crypto_component_name must be str or None"):
@@ -196,7 +196,7 @@ class TestCacheParametersValidation:
             ttl_seconds=3600,
             key_prefix="myapp",
             use_dapr_crypto=True,
-            crypto_component_name="vault-kms"
+            crypto_component_name="vault-kms",
         )
 
     def test_validate_cache_parameters_minimal_valid(self) -> None:
@@ -212,7 +212,7 @@ class TestCacheParametersValidation:
             ttl_seconds=None,
             key_prefix="cache",
             use_dapr_crypto=False,
-            crypto_component_name=None
+            crypto_component_name=None,
         )
 
     def test_validate_cache_parameters_invalid_store_name(self) -> None:
@@ -225,29 +225,19 @@ class TestCacheParametersValidation:
         """Test cache parameters validation propagates TTL errors."""
         # Act & Assert
         with pytest.raises(ValidationError, match="ttl_seconds must be >= 1"):
-            validate_cache_parameters(
-                store_name="redis-cache",
-                ttl_seconds=0
-            )
+            validate_cache_parameters(store_name="redis-cache", ttl_seconds=0)
 
     def test_validate_cache_parameters_invalid_key_prefix(self) -> None:
         """Test cache parameters validation propagates key prefix errors."""
         # Act & Assert
         with pytest.raises(ValidationError, match="key_prefix cannot be empty"):
-            validate_cache_parameters(
-                store_name="redis-cache",
-                key_prefix=""
-            )
+            validate_cache_parameters(store_name="redis-cache", key_prefix="")
 
     def test_validate_cache_parameters_invalid_crypto_component(self) -> None:
         """Test cache parameters validation propagates crypto component errors."""
         # Act & Assert
         with pytest.raises(ValidationError, match="crypto_component_name cannot be empty"):
-            validate_cache_parameters(
-                store_name="redis-cache",
-                use_dapr_crypto=True,
-                crypto_component_name=""
-            )
+            validate_cache_parameters(store_name="redis-cache", use_dapr_crypto=True, crypto_component_name="")
 
 
 class TestInvalidationParametersValidation:
@@ -307,7 +297,7 @@ class TestValidationError:
         """Test ValidationError inherits from ValueError."""
         # Arrange
         error = ValidationError("test error")
-        
+
         # Assert
         assert isinstance(error, ValueError)
         assert isinstance(error, ValidationError)
@@ -317,6 +307,6 @@ class TestValidationError:
         # Arrange
         message = "Invalid parameter value"
         error = ValidationError(message)
-        
+
         # Assert
         assert str(error) == message

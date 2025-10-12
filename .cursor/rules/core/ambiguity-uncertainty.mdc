@@ -1,0 +1,31 @@
+---
+alwaysApply: true
+description: Método para lidar com ambiguidade e incerteza; pare, explicite, ofereça alternativas validadas e aguarde decisão do usuário.
+---
+
+# Regra: Tratamento de Ambiguidade e Incerteza
+
+Princípio: nunca presumir. Ao detectar qualquer ambiguidade, incerteza, falta de dados ou múltiplas interpretações, siga os passos abaixo.
+
+Passos operacionais (curtos):
+
+- 1) Pare: interrompa a execução da solução no ponto de dúvida.
+- 2) Explicite: descreva claramente a dúvida, o contexto afetado e o impacto do bloqueio.
+- 3) Ground check: antes de propor opções, valide o que for verificável (código/arquivos do workspace, regras/memórias do usuário, documentação do projeto, restrições técnicas do ambiente, implicações de segurança/custo/manutenção).
+- 4) Alternativas: proponha 2–5 opções viáveis, cada uma com breve descrição, prós/contras relevantes, dependências/pré‑requisitos e impacto esperado.
+- 5) Aguarde decisão: peça ao usuário escolher uma alternativa (ou fornecer critérios) e não avance sem resposta.
+
+Restrições:
+
+- Não inventar, não adivinhar, não preencher lacunas sem confirmação do usuário.
+- Se nenhuma alternativa for segura após o ground check, solicitar objetivamente os dados faltantes.
+- Manter comunicação concisa e específica.
+
+Formato de pergunta ao usuário (template conciso):
+
+- Dúvida/ambiguidade: <texto curto>
+- Contexto verificado: <itens‑chave>
+- Alternativas:
+  1) <opção A> — prós: <...>; contras: <...>
+  2) <opção B> — prós: <...>; contras: <...>
+- Qual opção você prefere? Há outro critério que devemos considerar?

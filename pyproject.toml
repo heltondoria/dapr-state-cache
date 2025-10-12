@@ -1,0 +1,119 @@
+[project]
+name = "dapr-state-cache"
+version = "0.3.2"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Helton Dória", email = "helton.doria@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "dapr>=1.16.0",
+    "msgpack>=1.1.1",
+    "pydantic>=2.11.9",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.19,<0.9.0"]
+build-backend = "uv_build"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.13.2",
+    "radon>=5.1.0,<5.2.0",
+    "wily>=1.25.0",
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = false
+disallow_untyped_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+strict_equality = true
+[[tool.mypy.overrides]]
+module = "dapr.*"
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort (imports)
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "A",   # flake8-builtins
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "N",   # pep8-naming
+    "S",   # flake8-bandit (security)
+    "RUF", # regras do Ruff
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-q -ra --strict-markers --disable-warnings --maxfail=1 --cov --cov-report=term-missing"
+testpaths = ["tests"]
+xfail_strict = true
+
+[tool.coverage.run]
+branch = true
+source = ["."]
+omit = [
+    "tests/*",
+    ".venv/*",
+]
+
+[tool.coverage.report]
+precision = 2
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "if __name__ == '__main__':",
+    "pragma: no cover",
+    "raise NotImplementedError",
+]
+
+[tool.codespell]
+skip = ".git,.venv,uv.lock"
+check-filenames = true
+check-hidden = true
+ignore-words-list = "crate,fo,nd"
+
+[tool.vulture]
+paths = ["."]
+min_confidence = 80
+exclude = [".venv", "tests"]
+
+[tool.wily]
+path = "."
+extensions = [".py"]
+exclude = [".venv", "tests"]
+archiver = "git"
+
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
+reportMissingImports = "information"
+reportMissingTypeStubs = "none"
+include = ["."]
+exclude = ["**/.venv/**", "**/tests/**"]

@@ -1,0 +1,359 @@
+---
+globs: *.md
+description: "Regras obrigatórias de qualidade e boas práticas para documentos Markdown - zero erros de lint e máxima clareza"
+---
+
+# 📝 Regras de Qualidade para Documentos Markdown
+
+Esta regra define padrões **obrigatórios** para todos os arquivos Markdown no projeto, garantindo **zero erros de linting** e **máxima clareza** na documentação.
+
+## 🎯 Objetivos Obrigatórios
+
+- ✅ **Zero erros de linting** (markdownlint)
+- ✅ **Clareza e não ambiguidade** em todo conteúdo
+- ✅ **Estrutura consistente** e padronizada
+- ✅ **Acessibilidade** e facilidade de leitura
+- ✅ **Manutenibilidade** a longo prazo
+
+## 📐 Estrutura de Documento (Obrigatório)
+
+### Hierarquia de Títulos
+
+```markdown
+# Título Principal (H1) - Apenas 1 por documento
+## Seções Principais (H2)
+### Subseções (H3)
+#### Detalhes (H4) - Máximo recomendado
+```
+
+**Regras Obrigatórias:**
+
+- **Apenas 1 H1** por documento
+- **Progressão sequencial** sem pular níveis (H1 → H2 → H3)
+- **Linha em branco** antes e depois de cada título
+- **Títulos descritivos** e informativos
+
+### Estrutura Padrão de Documento
+
+```markdown
+# Título do Documento
+
+Breve descrição/introdução do documento.
+
+## Sumário (opcional para docs > 500 palavras)
+
+- [Seção 1](#seção-1)
+- [Seção 2](#seção-2)
+
+## Seção Principal
+
+Conteúdo da seção...
+
+### Subseção
+
+Detalhes específicos...
+
+## Conclusão/Próximos Passos
+
+Resumo e ações futuras.
+
+---
+
+## Referências (se aplicável)
+
+- [Link 1](url)
+- [Link 2](url)
+```
+
+## 🔤 Regras de Formatação (Não Negociáveis)
+
+### Listas
+
+**Listas com Marcadores:**
+
+```markdown
+- Item principal
+  - Subitem com 2 espaços de indentação
+  - Outro subitem
+- Próximo item principal
+```
+
+**Listas Numeradas:**
+
+```markdown
+1. Primeiro item
+2. Segundo item
+   - Subitem com marcador
+3. Terceiro item
+```
+
+**Regras Obrigatórias:**
+
+- **Linha em branco** antes e depois de cada lista
+- **Indentação de 2 espaços** para subitems
+- **Hífen (-)** para marcadores (não asterisco)
+- **Pontuação consistente** (sem ponto final em itens simples)
+
+### Ênfase e Formatação
+
+```markdown
+- **Negrito** para conceitos importantes
+- _Itálico_ para ênfase suave ou termos técnicos
+- `código inline` para comandos, variáveis, arquivos
+- ~~riscado~~ para conteúdo obsoleto
+```
+
+**Proibido:**
+
+- ❌ **_Misturar_** formatos de ênfase
+- ❌ **_Tripla ênfase_** desnecessária
+- ❌ TEXTO EM CAPS LOCK (use **negrito**)
+
+### Blocos de Código
+
+**Código com Linguagem:**
+
+```markdown
+​```python
+def exemplo():
+    return "código bem formatado"
+​```
+```
+
+**Código Genérico:**
+
+```markdown
+​```bash
+comando --flag valor
+​```
+```
+
+**Regras Obrigatórias:**
+
+- **Especificar linguagem** sempre que possível
+- **Linha em branco** antes e depois do bloco
+- **Código funcional** e testado
+- **Comentários** quando necessário para clareza
+
+## 🔗 Links e Referências (Padrões Obrigatórios)
+
+### Links Inline
+
+```markdown
+Consulte a [documentação oficial](https://exemplo.com) para mais detalhes.
+```
+
+### Links de Referência
+
+```markdown
+Consulte a [documentação oficial][1] e o [guia de instalação][2].
+
+[1]: https://exemplo.com/docs
+[2]: https://exemplo.com/install
+```
+
+### Links Internos
+
+```markdown
+Veja a seção [Configuração](#configuração) abaixo.
+```
+
+**Regras Obrigatórias:**
+
+- **Texto descritivo** significativo (não "clique aqui")
+- **URLs válidas** e acessíveis
+- **Links internos** usando anchors lowercase com hífens
+- **Links externos** abrem em nova aba quando aplicável
+
+### Imagens
+
+```markdown
+![Alt text descritivo](caminho/para/imagem.png "Título opcional")
+```
+
+**Regras Obrigatórias:**
+
+- **Alt text** sempre presente e descritivo
+- **Caminhos relativos** preferenciais
+- **Formatos otimizados** (PNG, JPG, SVG)
+- **Tamanho apropriado** para web
+
+## 📊 Tabelas (Formatação Obrigatória)
+
+### Tabela Simples
+
+```markdown
+| Coluna 1 | Coluna 2 | Coluna 3 |
+|----------|----------|----------|
+| Valor 1  | Valor 2  | Valor 3  |
+| Valor A  | Valor B  | Valor C  |
+```
+
+### Tabela com Alinhamento
+
+```markdown
+| Esquerda | Centro | Direita |
+|:---------|:------:|--------:|
+| Texto    | Texto  |   Texto |
+| Mais     | Dados  |    100% |
+```
+
+**Regras Obrigatórias:**
+
+- **Linha em branco** antes e depois da tabela
+- **Alinhamento visual** dos pipes (|)
+- **Cabeçalhos** sempre presentes
+- **Conteúdo conciso** nas células
+
+## ✍️ Regras de Escrita (Clareza Obrigatória)
+
+### Tom e Estilo
+
+- **Voz ativa** preferencial sobre passiva
+- **Frases concisas** e diretas
+- **Terminologia consistente** ao longo do documento
+- **Linguagem inclusiva** e profissional
+
+### Estrutura de Parágrafos
+
+- **Uma ideia** por parágrafo
+- **Máximo 4-5 linhas** por parágrafo
+- **Transições claras** entre parágrafos
+- **Linha em branco** entre parágrafos
+
+### Listas de Verificação
+
+```markdown
+## Checklist de Implementação
+
+- [ ] Tarefa não concluída
+- [x] Tarefa concluída
+- [ ] Próxima tarefa
+```
+
+## 🚫 Elementos Proibidos
+
+### Formatação Incorreta
+
+❌ **Evitar:**
+
+```text
+#Título sem espaço
+##Outro título sem espaço
+
+Lista sem linha em branco:
+- Item 1
+- Item 2
+
+Código sem especificar linguagem:
+    código genérico
+```
+
+✅ **Correto:**
+
+```text
+# Título com espaço
+
+## Outro título com espaço
+
+Lista com linha em branco:
+
+- Item 1
+- Item 2
+
+Código com linguagem:
+
+    código específico (com linguagem especificada)
+```
+
+### Conteúdo Ambíguo
+
+❌ **Evitar:**
+
+- Pronomes vagos ("isso", "aquilo" sem referência clara)
+- Instruções incompletas ("configure conforme necessário")
+- Links genéricos ("clique aqui", "veja mais")
+- Termos técnicos sem explicação
+
+✅ **Preferir:**
+
+- Referências específicas e claras
+- Instruções passo a passo detalhadas
+- Links descritivos e informativos
+- Glossário ou explicações inline
+
+## 📋 Checklist de Qualidade (Obrigatório)
+
+Antes de finalizar qualquer documento Markdown:
+
+### ✅ Estrutura
+
+- [ ] H1 único e descritivo
+- [ ] Hierarquia de títulos sequencial
+- [ ] Sumário presente (se > 500 palavras)
+- [ ] Conclusão ou próximos passos
+
+### ✅ Formatação
+
+- [ ] Zero erros de markdownlint
+- [ ] Listas com linha em branco antes/depois
+- [ ] Código com linguagem especificada
+- [ ] Tabelas bem formatadas
+
+### ✅ Conteúdo
+
+- [ ] Linguagem clara e não ambígua
+- [ ] Links funcionais e descritivos
+- [ ] Imagens com alt text
+- [ ] Terminologia consistente
+
+### ✅ Acessibilidade
+
+- [ ] Estrutura lógica para leitores de tela
+- [ ] Contraste adequado em exemplos
+- [ ] Linguagem inclusiva
+- [ ] Conteúdo escaneável
+
+## 🛠️ Ferramentas de Validação
+
+### Linting Automático
+
+```bash
+# Verificar erros de markdown
+markdownlint *.md
+
+# Verificar links quebrados
+markdown-link-check *.md
+
+# Validação de ortografia
+aspell check arquivo.md
+```
+
+### Extensões Recomendadas
+
+- **markdownlint** para VSCode/Cursor
+- **Markdown Preview Enhanced**
+- **Markdown Table Formatter**
+- **Auto-Link URLs**
+
+## 📚 Referências e Padrões
+
+### Markdownlint Rules
+
+- **MD001**: Heading levels should only increment by one level at a time
+- **MD003**: Heading style should be consistent
+- **MD022**: Headings should be surrounded by blank lines
+- **MD032**: Lists should be surrounded by blank lines
+- **MD047**: Files should end with a single newline character
+
+### Guias de Estilo
+
+- [CommonMark Spec](https://commonmark.org/)
+- [GitHub Flavored Markdown](https://github.github.com/gfm/)
+- [Markdown Guide](https://www.markdownguide.org/)
+
+---
+
+⚠️ **IMPORTANTE**: Qualquer documento Markdown que não atenda a estes padrões deve ser corrigido antes da submissão. Use as ferramentas de validação mencionadas para garantir conformidade total.
+
+🎯 **META**: Documentação clara, acessível e profissional que serve como referência confiável para todos os usuários.

@@ -1,0 +1,56 @@
+# Configuration for coverage.py
+# Ensures 100% coverage as required by Clean Code + TDD rules
+
+[run]
+source = src/dapr_state_cache
+branch = true
+omit = 
+    */tests/*
+    */test_*
+    */__pycache__/*
+    */venv/*
+    */env/*
+    */.tox/*
+    setup.py
+    
+[report]
+# Require 100% coverage (fail if below)
+fail_under = 100
+
+# Show missing lines in terminal output  
+show_missing = true
+
+# Precision for coverage percentage
+precision = 2
+
+# Skip covered files in output (focus on missing coverage)
+skip_covered = false
+
+# Sort by coverage percentage (lowest first)
+sort = Cover
+
+exclude_lines =
+    # Standard pragma for excluding lines
+    pragma: no cover
+    
+    # Don't complain about missing debug-only code:
+    def __repr__
+    if self\.debug
+    
+    # Don't complain if tests don't hit defensive assertion code:
+    raise AssertionError
+    raise NotImplementedError
+    
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if __name__ == .__main__.:
+    
+    # Don't complain about abstract methods
+    @(abc\.)?abstractmethod
+
+[html]
+directory = htmlcov
+title = dapr-state-cache Coverage Report
+
+[xml]
+output = coverage.xml

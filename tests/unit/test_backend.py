@@ -575,3 +575,90 @@ class TestDaprStateBackend:
         
         # Assert
         assert backend.store_name == store_name
+
+    @pytest.mark.asyncio
+    async def test_get_dapr_client_none_after_init_raises_error(self) -> None:
+        """Test get operation when Dapr client is None after initialization."""
+        # Arrange
+        key = "test:key"
+        
+        # Create backend without triggering initialization
+        backend = DaprStateBackend.__new__(DaprStateBackend)
+        backend._store_name = "test-store"
+        backend._timeout_seconds = 5.0
+        backend._dapr_client = None
+        
+        # Mock _ensure_dapr_client to not set the client
+        backend._ensure_dapr_client = Mock()  # type: ignore
+        
+        # Act & Assert - DaprUnavailableError gets reclassified as RecoverableCacheError
+        with pytest.raises(RecoverableCacheError) as exc_info:
+            await backend.get(key)
+        
+        assert "Cache get failed" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_set_dapr_client_none_after_init_raises_error(self) -> None:
+        """Test set operation when Dapr client is None after initialization."""
+        # Arrange
+        key = "test:key"
+        value = b"test data"
+        ttl = 3600
+        
+        # Create backend without triggering initialization
+        backend = DaprStateBackend.__new__(DaprStateBackend)
+        backend._store_name = "test-store"
+        backend._timeout_seconds = 5.0
+        backend._dapr_client = None
+        
+        # Mock _ensure_dapr_client to not set the client
+        backend._ensure_dapr_client = Mock()  # type: ignore
+        
+        # Act & Assert - DaprUnavailableError gets reclassified as RecoverableCacheError
+        with pytest.raises(RecoverableCacheError) as exc_info:
+            await backend.set(key, value, ttl)
+        
+        assert "Cache set failed" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_invalidate_dapr_client_none_after_init_raises_error(self) -> None:
+        """Test invalidate operation when Dapr client is None after initialization."""
+        # Arrange
+        key = "test:key"
+        
+        # Create backend without triggering initialization
+        backend = DaprStateBackend.__new__(DaprStateBackend)
+        backend._store_name = "test-store"
+        backend._timeout_seconds = 5.0
+        backend._dapr_client = None
+        
+        # Mock _ensure_dapr_client to not set the client
+        backend._ensure_dapr_client = Mock()  # type: ignore
+        
+        # Act - should not raise exception (best-effort operation)
+        await backend.invalidate(key)
+        
+        # Assert - verify _ensure_dapr_client was called
+        backend._ensure_dapr_client.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_invalidate_prefix_error_handling(self) -> None:
+        """Test invalidate_prefix error handling."""
+        # Arrange
+        prefix = "test:prefix"
+        
+        # Create backend and force an exception in _ensure_dapr_client
+        backend = DaprStateBackend.__new__(DaprStateBackend)
+        backend._store_name = "test-store"
+        backend._timeout_seconds = 5.0
+        backend._dapr_client = None
+        
+        def mock_ensure_client():
+            raise Exception("Connection failed")
+        
+        backend._ensure_dapr_client = mock_ensure_client  # type: ignore
+        
+        # Act - should not raise exception (best-effort operation)
+        await backend.invalidate_prefix(prefix)
+        
+        # Assert - no exception should be raised (it's logged but not propagated)

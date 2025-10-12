@@ -14,6 +14,7 @@ from uuid import UUID
 
 import pytest
 
+from dapr_state_cache.backend.exceptions import CacheSerializationError
 from dapr_state_cache.codecs import (
     JsonSerializer,
     MsgpackSerializer, 
@@ -208,7 +209,7 @@ class TestNormalizeForSerialization:
         assert result == {"name": "test", "value": 42}
 
     def test_normalize_unsupported_type_raises_error(self) -> None:
-        """Test that unsupported types raise TypeError with helpful message."""
+        """Test that unsupported types raise CacheSerializationError with helpful message."""
         # Arrange
         class UnsupportedObject:
             __slots__ = ()  # No __dict__ access
@@ -216,7 +217,7 @@ class TestNormalizeForSerialization:
         obj = UnsupportedObject()
         
         # Act & Assert
-        with pytest.raises(TypeError) as exc_info:
+        with pytest.raises(CacheSerializationError) as exc_info:
             normalize_for_serialization(obj)
         
         assert "is not JSON serializable" in str(exc_info.value)
@@ -344,6 +345,22 @@ class TestGetFunctionPath:
         assert result.startswith("unknown.")
         assert result.endswith(".test_function")
 
+    def test_get_path_for_standalone_function_coverage(self) -> None:
+        """Test get_function_path for standalone function path for coverage."""
+        # Arrange - Create function that will take the standalone path (line 237)
+        def simple_func() -> None:
+            pass
+        
+        # Ensure it doesn't have qualname with dots
+        simple_func.__qualname__ = "simple_func"  # No dots
+        
+        # Act
+        result = get_function_path(simple_func)
+        
+        # Assert - This should hit line 237
+        assert result.endswith(".simple_func")
+        assert "simple_func" in result
+
 
 class TestFilterArgsForMethods:
     """Test filter_args_for_methods function."""
@@ -464,7 +481,7 @@ class TestJsonSerializer:
         assert deserialized == original_data
 
     def test_json_serialize_unsupported_type_raises_error(self) -> None:
-        """Test that unsupported types raise TypeError."""
+        """Test that unsupported types raise CacheSerializationError."""
         # Arrange
         serializer = JsonSerializer()
         
@@ -474,10 +491,25 @@ class TestJsonSerializer:
         data = UnsupportedType()
         
         # Act & Assert
-        with pytest.raises(TypeError) as exc_info:
+        with pytest.raises(CacheSerializationError) as exc_info:
             serializer.serialize(data)
         
-        assert "JSON serialization failed" in str(exc_info.value)
+        assert "is not JSON serializable" in str(exc_info.value)
+
+    def test_json_serialize_direct_error_coverage(self) -> None:
+        """Test JsonSerializer direct TypeError from json.dumps for coverage."""
+        # Arrange
+        serializer = JsonSerializer()
+        
+        # Mock json.dumps to raise TypeError directly
+        from unittest.mock import patch
+        
+        # Act & Assert
+        with patch('json.dumps', side_effect=TypeError("JSON encoding error")):
+            with pytest.raises(CacheSerializationError) as exc_info:
+                serializer.serialize({"test": "data"})
+            
+            assert "JSON serialization failed" in str(exc_info.value)
 
     def test_json_deserialize_invalid_bytes_raises_error(self) -> None:
         """Test that non-bytes input raises TypeError."""
@@ -485,7 +517,7 @@ class TestJsonSerializer:
         serializer = JsonSerializer()
         
         # Act & Assert
-        with pytest.raises(TypeError) as exc_info:
+        with pytest.raises(CacheSerializationError) as exc_info:
             serializer.deserialize("not bytes")  # type: ignore
         
         assert "Expected bytes, got str" in str(exc_info.value)
@@ -497,7 +529,7 @@ class TestJsonSerializer:
         invalid_json = b'{"invalid": json}'
         
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(CacheSerializationError) as exc_info:
             serializer.deserialize(invalid_json)
         
         assert "Invalid JSON data" in str(exc_info.value)
@@ -509,7 +541,7 @@ class TestJsonSerializer:
         invalid_utf8 = b'\xff\xfe'  # Invalid UTF-8
         
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(CacheSerializationError) as exc_info:
             serializer.deserialize(invalid_utf8)
         
         assert "Invalid UTF-8 encoding" in str(exc_info.value)
@@ -530,26 +562,172 @@ class TestMsgpackSerializer:
 
     def test_msgpack_serializer_init_missing_dependency(self) -> None:
         """Test MsgpackSerializer raises ImportError when msgpack unavailable."""
-        # This test would need to mock the import failure
-        # For now, we'll skip if msgpack is available
-        try:
-            import msgpack  # type: ignore[import-untyped,import-not-found] # noqa: F401
-            pytest.skip("msgpack is available, cannot test ImportError")
-        except ImportError:
-            # Act & Assert
-            with pytest.raises(ImportError) as exc_info:
-                MsgpackSerializer()
-            
-            assert "requires msgpack package" in str(exc_info.value)
+        # Arrange - Create serializer without providing msgpack module
+        # This simulates the case where msgpack is not installed
+        
+        # Use unittest.mock to patch the import
+        from unittest.mock import patch
+        
+        # Act & Assert
+        with patch.dict('sys.modules', {'msgpack': None}):
+            with patch('builtins.__import__', side_effect=ImportError("No module named 'msgpack'")):
+                with pytest.raises(ImportError) as exc_info:
+                    MsgpackSerializer()
+                
+                assert "requires msgpack package" in str(exc_info.value)
 
-    @pytest.mark.skipif(
-        condition=True,
-        reason="Requires msgpack - will implement when needed"
-    )
     def test_msgpack_serialize_deserialize_roundtrip(self) -> None:
         """Test msgpack serialization/deserialization roundtrip."""
-        # This test would be implemented when msgpack is needed
-        pass
+        # Arrange - Mock msgpack module
+        from unittest.mock import Mock
+        
+        mock_msgpack = Mock()
+        mock_msgpack.packb.return_value = b'\x82\xa3key\xa5value\xa6number*'  # Mock binary data
+        mock_msgpack.unpackb.return_value = {"key": "value", "number": 42}
+        mock_msgpack.exceptions.ExtraData = Exception  # Mock exception class
+        
+        serializer = MsgpackSerializer(msgpack_module=mock_msgpack)
+        data = {"key": "value", "number": 42}
+        
+        # Act
+        serialized = serializer.serialize(data)
+        deserialized = serializer.deserialize(serialized)
+        
+        # Assert
+        assert deserialized == data
+        
+        # Verify mocked calls
+        mock_msgpack.packb.assert_called_once()
+        mock_msgpack.unpackb.assert_called_once_with(
+            b'\x82\xa3key\xa5value\xa6number*', 
+            raw=False, 
+            strict_map_key=False
+        )
+
+    def test_msgpack_serialize_with_dependency_injection(self) -> None:
+        """Test MsgpackSerializer with injected msgpack module."""
+        # Arrange - Mock msgpack module
+        from unittest.mock import Mock
+        
+        mock_msgpack = Mock()
+        mock_msgpack.packb.return_value = b'mock_data'
+        
+        serializer = MsgpackSerializer(msgpack_module=mock_msgpack)
+        data = {"test": "data"}
+        
+        # Act
+        result = serializer.serialize(data)
+        
+        # Assert
+        assert result == b'mock_data'
+        mock_msgpack.packb.assert_called_once_with(
+            data, use_bin_type=True
+        )
+
+    def test_msgpack_serialize_error_handling(self) -> None:
+        """Test MsgpackSerializer error handling during serialization."""
+        # Arrange - Mock msgpack that raises error
+        from unittest.mock import Mock
+        
+        mock_msgpack = Mock()
+        mock_msgpack.packb.side_effect = ValueError("Serialization error")
+        
+        serializer = MsgpackSerializer(msgpack_module=mock_msgpack)
+        
+        # Act & Assert
+        with pytest.raises(CacheSerializationError) as exc_info:
+            serializer.serialize({"test": "data"})
+        
+        assert "MessagePack serialization failed" in str(exc_info.value)
+
+    def test_msgpack_deserialize_invalid_bytes_raises_error(self) -> None:
+        """Test MsgpackSerializer raises error for non-bytes input."""
+        # Arrange
+        from unittest.mock import Mock
+        
+        mock_msgpack = Mock()
+        serializer = MsgpackSerializer(msgpack_module=mock_msgpack)
+        
+        # Act & Assert
+        with pytest.raises(CacheSerializationError) as exc_info:
+            serializer.deserialize("not bytes")  # type: ignore
+        
+        assert "Expected bytes, got str" in str(exc_info.value)
+
+    def test_msgpack_deserialize_invalid_data_raises_error(self) -> None:
+        """Test MsgpackSerializer raises error for invalid msgpack data."""
+        # Arrange - Mock msgpack that raises error
+        from unittest.mock import Mock
+        
+        mock_msgpack = Mock()
+        mock_msgpack.unpackb.side_effect = ValueError("Invalid msgpack data")
+        mock_msgpack.exceptions.ExtraData = Exception
+        
+        serializer = MsgpackSerializer(msgpack_module=mock_msgpack)
+        invalid_data = b'invalid msgpack data'
+        
+        # Act & Assert
+        with pytest.raises(CacheSerializationError) as exc_info:
+            serializer.deserialize(invalid_data)
+        
+        assert "Invalid MessagePack data" in str(exc_info.value)
+
+    def test_msgpack_deserialize_extra_data_error(self) -> None:
+        """Test MsgpackSerializer handles ExtraData exception."""
+        # Arrange - Mock msgpack with ExtraData exception
+        from unittest.mock import Mock
+        
+        mock_msgpack = Mock()
+        extra_data_exception = type('ExtraData', (Exception,), {})
+        mock_msgpack.exceptions.ExtraData = extra_data_exception
+        mock_msgpack.unpackb.side_effect = extra_data_exception("Extra data found")
+        
+        serializer = MsgpackSerializer(msgpack_module=mock_msgpack)
+        
+        # Act & Assert
+        with pytest.raises(CacheSerializationError) as exc_info:
+            serializer.deserialize(b'data_with_extra')
+        
+        assert "Invalid MessagePack data" in str(exc_info.value)
+
+    def test_msgpack_deserialize_unexpected_error(self) -> None:
+        """Test MsgpackSerializer handles unexpected exceptions."""
+        # Arrange - Mock msgpack that raises unexpected error
+        from unittest.mock import Mock
+        
+        mock_msgpack = Mock()
+        mock_msgpack.unpackb.side_effect = RuntimeError("Unexpected error")
+        mock_msgpack.exceptions.ExtraData = Exception
+        
+        serializer = MsgpackSerializer(msgpack_module=mock_msgpack)
+        
+        # Act & Assert
+        with pytest.raises(CacheSerializationError) as exc_info:
+            serializer.deserialize(b'data')
+        
+        # RuntimeError gets caught by the general Exception handler in the first except clause
+        assert "Invalid MessagePack data" in str(exc_info.value)
+
+    def test_msgpack_deserialize_generic_exception_coverage(self) -> None:
+        """Test MsgpackSerializer handles generic exceptions for coverage."""
+        # Arrange - Mock msgpack that raises Exception (not ValueError or ExtraData)
+        from unittest.mock import Mock
+        
+        mock_msgpack = Mock()
+        # Use a custom exception class to avoid being caught by ValueError clause
+        class CustomException(Exception):
+            pass
+        
+        mock_msgpack.unpackb.side_effect = CustomException("Custom error")
+        mock_msgpack.exceptions.ExtraData = ValueError  # Different type to avoid matching
+        
+        serializer = MsgpackSerializer(msgpack_module=mock_msgpack)
+        
+        # Act & Assert
+        with pytest.raises(CacheSerializationError) as exc_info:
+            serializer.deserialize(b'data')
+        
+        assert "MessagePack deserialization failed" in str(exc_info.value)
 
 
 class TestPickleSerializer:
@@ -635,7 +813,7 @@ class TestPickleSerializer:
         serializer = PickleSerializer()
         
         # Act & Assert
-        with pytest.raises(TypeError) as exc_info:
+        with pytest.raises(CacheSerializationError) as exc_info:
             serializer.deserialize("not bytes")  # type: ignore
         
         assert "Expected bytes, got str" in str(exc_info.value)
@@ -647,7 +825,37 @@ class TestPickleSerializer:
         invalid_data = b"not pickle data"
         
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(CacheSerializationError) as exc_info:
             serializer.deserialize(invalid_data)
         
         assert "Pickle deserialization failed" in str(exc_info.value)
+
+    def test_pickle_serialize_error_coverage(self) -> None:
+        """Test PickleSerializer serialization error for coverage."""
+        # Arrange
+        serializer = PickleSerializer()
+        
+        # Create an unpicklable object by mocking pickle.dumps to fail
+        from unittest.mock import patch
+        
+        # Act & Assert
+        with patch('pickle.dumps', side_effect=pickle.PicklingError("Cannot pickle")):
+            with pytest.raises(CacheSerializationError) as exc_info:
+                serializer.serialize({"test": "data"})
+            
+            assert "Pickle serialization failed" in str(exc_info.value)
+
+    def test_pickle_deserialize_generic_exception_coverage(self) -> None:
+        """Test PickleSerializer generic exception handling for coverage."""
+        # Arrange
+        serializer = PickleSerializer()
+        
+        # Mock pickle.loads to raise a generic exception
+        from unittest.mock import patch
+        
+        # Act & Assert
+        with patch('pickle.loads', side_effect=AttributeError("Generic error")):
+            with pytest.raises(CacheSerializationError) as exc_info:
+                serializer.deserialize(b'data')
+            
+            assert "Unexpected error during pickle deserialization" in str(exc_info.value)

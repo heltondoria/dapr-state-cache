@@ -1,1 +1,11 @@
 /.venv
+src/dapr_state_cache/__pycache__
+src/dapr_state_cache/codecs/__pycache__
+src/dapr_state_cache/core/__pycache__
+src/dapr_state_cache/decorators/__pycache__
+src/dapr_state_cache/keys/__pycache__
+src/dapr_state_cache/observability/__pycache__
+src/dapr_state_cache/orchestration/__pycache__
+src/dapr_state_cache/backend/__pycache__
+tests/__pycache__
+tests/unit/__pycache__

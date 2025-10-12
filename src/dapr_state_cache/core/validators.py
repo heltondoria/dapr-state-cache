@@ -5,6 +5,18 @@ Implements validation rules as specified in section 16 of the technical
 specification to ensure cache parameters meet requirements and constraints.
 """
 
+from .constants import (
+    ERROR_CRYPTO_COMPONENT_EMPTY,
+    ERROR_INVALIDATION_KEY_INVALID,
+    ERROR_INVALIDATION_PARAMS_BOTH,
+    ERROR_INVALIDATION_PARAMS_MISSING,
+    ERROR_INVALIDATION_PREFIX_INVALID,
+    ERROR_KEY_PREFIX_EMPTY,
+    ERROR_STORE_NAME_EMPTY,
+    ERROR_TTL_INVALID,
+    ERROR_TTL_TYPE_INVALID,
+    MIN_TTL_SECONDS,
+)
 
 
 class ValidationError(ValueError):
@@ -19,7 +31,7 @@ class ValidationError(ValueError):
 def validate_ttl_seconds(ttl_seconds: int | None) -> None:
     """Validate TTL parameter.
 
-    TTL must be >= 1 second or None (for default 3600s).
+    TTL must be >= 1 second or None (for default).
     TTL=0 or negative values are invalid per Dapr constraints.
 
     Args:
@@ -29,12 +41,21 @@ def validate_ttl_seconds(ttl_seconds: int | None) -> None:
         ValidationError: If TTL is invalid
     """
     if ttl_seconds is not None:
-        # Check for bool first since bool is subclass of int in Python
-        if isinstance(ttl_seconds, bool) or not isinstance(ttl_seconds, int):
-            raise ValidationError(f"ttl_seconds must be int or None, got {type(ttl_seconds).__name__}")
+        _validate_ttl_type(ttl_seconds)
+        _validate_ttl_range(ttl_seconds)
 
-        if ttl_seconds < 1:
-            raise ValidationError(f"ttl_seconds must be >= 1 or None (default 3600), got {ttl_seconds}")
+
+def _validate_ttl_type(ttl_seconds: int | None) -> None:
+    """Validate TTL parameter type."""
+    # Check for bool first since bool is subclass of int in Python
+    if isinstance(ttl_seconds, bool) or not isinstance(ttl_seconds, int):
+        raise ValidationError(ERROR_TTL_TYPE_INVALID.format(type_name=type(ttl_seconds).__name__))
+
+
+def _validate_ttl_range(ttl_seconds: int) -> None:
+    """Validate TTL parameter range."""
+    if ttl_seconds < MIN_TTL_SECONDS:
+        raise ValidationError(ERROR_TTL_INVALID.format(value=ttl_seconds))
 
 
 def validate_store_name(store_name: str) -> None:
@@ -48,11 +69,8 @@ def validate_store_name(store_name: str) -> None:
     Raises:
         ValidationError: If store name is invalid
     """
-    if not isinstance(store_name, str):
-        raise ValidationError(f"store_name must be str, got {type(store_name).__name__}")
-
-    if not store_name or not store_name.strip():
-        raise ValidationError("store_name cannot be empty or whitespace-only")
+    _validate_string_type("store_name", store_name)
+    _validate_non_empty_string(store_name, ERROR_STORE_NAME_EMPTY)
 
 
 def validate_key_prefix(key_prefix: str) -> None:
@@ -66,11 +84,8 @@ def validate_key_prefix(key_prefix: str) -> None:
     Raises:
         ValidationError: If key prefix is invalid
     """
-    if not isinstance(key_prefix, str):
-        raise ValidationError(f"key_prefix must be str, got {type(key_prefix).__name__}")
-
-    if not key_prefix or not key_prefix.strip():
-        raise ValidationError("key_prefix cannot be empty or whitespace-only")
+    _validate_string_type("key_prefix", key_prefix)
+    _validate_non_empty_string(key_prefix, ERROR_KEY_PREFIX_EMPTY)
 
 
 def validate_crypto_component_name(use_dapr_crypto: bool, crypto_component_name: str | None) -> None:
@@ -86,13 +101,8 @@ def validate_crypto_component_name(use_dapr_crypto: bool, crypto_component_name:
         ValidationError: If crypto component name is invalid
     """
     if crypto_component_name is not None:
-        if not isinstance(crypto_component_name, str):
-            raise ValidationError(
-                f"crypto_component_name must be str or None, got {type(crypto_component_name).__name__}"
-            )
-
-        if not crypto_component_name.strip():
-            raise ValidationError("crypto_component_name cannot be empty or whitespace-only")
+        _validate_optional_string_type("crypto_component_name", crypto_component_name)
+        _validate_non_empty_string(crypto_component_name, ERROR_CRYPTO_COMPONENT_EMPTY)
 
 
 def validate_cache_parameters(
@@ -157,16 +167,51 @@ def validate_invalidation_parameters(key: str | None = None, prefix: str | None 
     Raises:
         ValidationError: If parameters are invalid
     """
+    _validate_invalidation_params_presence(key, prefix)
+    _validate_invalidation_params_exclusivity(key, prefix)
+    _validate_invalidation_key_if_provided(key)
+    _validate_invalidation_prefix_if_provided(prefix)
+
+
+def _validate_string_type(param_name: str, value: str) -> None:
+    """Validate that a parameter is a string type."""
+    if not isinstance(value, str):
+        raise ValidationError(f"{param_name} must be str, got {type(value).__name__}")
+
+
+def _validate_optional_string_type(param_name: str, value: str | None) -> None:
+    """Validate that a parameter is a string or None type."""
+    if not isinstance(value, str):
+        raise ValidationError(f"{param_name} must be str or None, got {type(value).__name__}")
+
+
+def _validate_non_empty_string(value: str, error_message: str) -> None:
+    """Validate that a string is not empty or whitespace-only."""
+    if not value or not value.strip():
+        raise ValidationError(error_message)
+
+
+def _validate_invalidation_params_presence(key: str | None, prefix: str | None) -> None:
+    """Validate that at least one invalidation parameter is provided."""
     if key is None and prefix is None:
-        raise ValidationError("Either 'key' or 'prefix' must be provided for invalidation")
+        raise ValidationError(ERROR_INVALIDATION_PARAMS_MISSING)
 
+
+def _validate_invalidation_params_exclusivity(key: str | None, prefix: str | None) -> None:
+    """Validate that only one invalidation parameter is provided."""
     if key is not None and prefix is not None:
-        raise ValidationError("Cannot specify both 'key' and 'prefix' for invalidation")
+        raise ValidationError(ERROR_INVALIDATION_PARAMS_BOTH)
 
+
+def _validate_invalidation_key_if_provided(key: str | None) -> None:
+    """Validate invalidation key if provided."""
     if key is not None:
         if not isinstance(key, str) or not key.strip():
-            raise ValidationError("Invalidation key must be non-empty string")
+            raise ValidationError(ERROR_INVALIDATION_KEY_INVALID)
 
+
+def _validate_invalidation_prefix_if_provided(prefix: str | None) -> None:
+    """Validate invalidation prefix if provided."""
     if prefix is not None:
         if not isinstance(prefix, str) or not prefix.strip():
-            raise ValidationError("Invalidation prefix must be non-empty string")
+            raise ValidationError(ERROR_INVALIDATION_PREFIX_INVALID)

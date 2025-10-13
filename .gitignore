@@ -18,3 +18,4 @@ src/dapr_state_cache/codecs/__pycache__/pickle_serializer.cpython-312.pyc
 tests/unit/__pycache__/test_codecs.cpython-312-pytest-8.4.2.pyc
 tests/integration/__pycache__/__init__.cpython-312.pyc
 tests/integration/__pycache__/test_cacheable_integration.cpython-312-pytest-8.4.2.pyc
+.coverage

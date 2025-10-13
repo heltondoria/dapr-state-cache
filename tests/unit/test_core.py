@@ -719,8 +719,8 @@ class TestCacheService:
         assert result is True
         mock_hooks.on_cache_error.assert_called_once()
         mock_hooks.on_cache_write.assert_called_once()
-        # Should store plaintext data
-        mock_backend.set.assert_called_once_with("test:key:hash123", b'{"result": "test"}', None)
+        # Should store plaintext data with default TTL
+        mock_backend.set.assert_called_once_with("test:key:hash123", b'{"result": "test"}', 3600)
 
     @pytest.mark.asyncio
     async def test_invalidate_success(self) -> None:

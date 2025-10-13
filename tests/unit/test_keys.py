@@ -11,7 +11,9 @@ from typing import Any
 import pytest
 
 from dapr_state_cache.keys import (
+    ArgumentFilter,
     DefaultKeyBuilder,
+    MethodTypeDetector,
     calculate_deterministic_hash,
     calculate_hash_for_args,
     create_cache_key,
@@ -387,94 +389,24 @@ class TestDefaultKeyBuilder:
         # Assert
         assert result.startswith("custom:")
 
-    def test_is_instance_method_bound_method(self) -> None:
-        """Test detection of bound instance method."""
+    def test_build_key_with_custom_argument_filter(self) -> None:
+        """Test key building with custom argument filter."""
         # Arrange
-        builder = DefaultKeyBuilder()
+        custom_filter = ArgumentFilter()
+        builder = DefaultKeyBuilder(key_prefix="custom", argument_filter=custom_filter)
 
-        class TestClass:
-            def method(self) -> None:
-                pass
-
-        instance = TestClass()
-
-        # Act
-        result = builder._is_instance_method(instance.method)
-
-        # Assert
-        assert result is True
-
-    def test_is_instance_method_function_with_self(self) -> None:
-        """Test detection of function with self parameter."""
-        # Arrange
-        builder = DefaultKeyBuilder()
-
-        def function_with_self(self, x: int) -> int:
+        def test_function(x: int) -> int:
             return x
 
-        # Act
-        result = builder._is_instance_method(function_with_self)
-
-        # Assert
-        assert result is True
-
-    def test_is_instance_method_regular_function(self) -> None:
-        """Test that regular function is not detected as instance method."""
-        # Arrange
-        builder = DefaultKeyBuilder()
-
-        def regular_function(x: int) -> int:
-            return x
+        args = (1,)
+        kwargs: dict[str, Any] = {}
 
         # Act
-        result = builder._is_instance_method(regular_function)
+        result = builder.build_key(test_function, args, kwargs)
 
         # Assert
-        assert result is False
-
-    def test_is_class_method_bound_class_method(self) -> None:
-        """Test detection of bound class method."""
-        # Arrange
-        builder = DefaultKeyBuilder()
-
-        class TestClass:
-            @classmethod
-            def class_method(cls) -> None:
-                pass
-
-        # Act
-        result = builder._is_class_method(TestClass.class_method)
-
-        # Assert
-        assert result is True
-
-    def test_is_class_method_function_with_cls(self) -> None:
-        """Test detection of function with cls parameter."""
-        # Arrange
-        builder = DefaultKeyBuilder()
-
-        def function_with_cls(cls, x: int) -> int:
-            return x
-
-        # Act
-        result = builder._is_class_method(function_with_cls)
-
-        # Assert
-        assert result is True
-
-    def test_is_class_method_regular_function(self) -> None:
-        """Test that regular function is not detected as class method."""
-        # Arrange
-        builder = DefaultKeyBuilder()
-
-        def regular_function(x: int) -> int:
-            return x
-
-        # Act
-        result = builder._is_class_method(regular_function)
-
-        # Assert
-        assert result is False
+        assert isinstance(result, str)
+        assert result.startswith("custom:")
 
     def test_build_key_error_handling(self) -> None:
         """Test that build_key handles errors gracefully."""
@@ -496,3 +428,254 @@ class TestDefaultKeyBuilder:
             builder.build_key(problematic_function, args, kwargs)
 
         assert "Failed to build cache key" in str(exc_info.value)
+
+
+class TestMethodTypeDetector:
+    """Test MethodTypeDetector implementation."""
+
+    def test_is_instance_method_bound_method(self) -> None:
+        """Test detection of bound instance method."""
+        # Arrange
+        detector = MethodTypeDetector()
+
+        class TestClass:
+            def method(self) -> None:
+                pass
+
+        instance = TestClass()
+
+        # Act
+        result = detector.is_instance_method(instance.method)
+
+        # Assert
+        assert result is True
+
+    def test_is_instance_method_function_with_self(self) -> None:
+        """Test detection of function with self parameter."""
+        # Arrange
+        detector = MethodTypeDetector()
+
+        def function_with_self(self, x: int) -> int:
+            return x
+
+        # Act
+        result = detector.is_instance_method(function_with_self)
+
+        # Assert
+        assert result is True
+
+    def test_is_instance_method_regular_function(self) -> None:
+        """Test that regular function is not detected as instance method."""
+        # Arrange
+        detector = MethodTypeDetector()
+
+        def regular_function(x: int) -> int:
+            return x
+
+        # Act
+        result = detector.is_instance_method(regular_function)
+
+        # Assert
+        assert result is False
+
+    def test_is_class_method_bound_class_method(self) -> None:
+        """Test detection of bound class method."""
+        # Arrange
+        detector = MethodTypeDetector()
+
+        class TestClass:
+            @classmethod
+            def class_method(cls) -> None:
+                pass
+
+        # Act
+        result = detector.is_class_method(TestClass.class_method)
+
+        # Assert
+        assert result is True
+
+    def test_is_class_method_function_with_cls(self) -> None:
+        """Test detection of function with cls parameter."""
+        # Arrange
+        detector = MethodTypeDetector()
+
+        def function_with_cls(cls, x: int) -> int:
+            return x
+
+        # Act
+        result = detector.is_class_method(function_with_cls)
+
+        # Assert
+        assert result is True
+
+    def test_is_class_method_regular_function(self) -> None:
+        """Test that regular function is not detected as class method."""
+        # Arrange
+        detector = MethodTypeDetector()
+
+        def regular_function(x: int) -> int:
+            return x
+
+        # Act
+        result = detector.is_class_method(regular_function)
+
+        # Assert
+        assert result is False
+
+    def test_is_class_method_classmethod_decorator(self) -> None:
+        """Test detection of classmethod decorator."""
+        # Arrange
+        detector = MethodTypeDetector()
+
+        # Create a classmethod directly (não bound)
+        def raw_function(cls):
+            return cls
+
+        class_method_func = classmethod(raw_function)
+
+        # Act
+        result = detector.is_class_method(class_method_func)
+
+        # Assert
+        assert result is True
+
+    def test_has_first_parameter_invalid_signature(self) -> None:
+        """Test exception handling in _has_first_parameter."""
+        # Arrange
+        detector = MethodTypeDetector()
+
+        # Create a mock object that raises exception on signature inspection
+        class MockFunction:
+            def __call__(self):
+                pass
+
+        mock_func = MockFunction()
+
+        # Monkey patch inspect.signature to raise ValueError
+        import inspect
+
+        original_signature = inspect.signature
+
+        def mock_signature(func):
+            if func is mock_func:
+                raise ValueError("Mock signature error")
+            return original_signature(func)
+
+        inspect.signature = mock_signature
+
+        try:
+            # Act
+            result = detector._has_first_parameter(mock_func, "self")
+
+            # Assert
+            assert result is False
+        finally:
+            # Restore original function
+            inspect.signature = original_signature
+
+    def test_has_first_parameter_type_error(self) -> None:
+        """Test TypeError handling in _has_first_parameter."""
+        # Arrange
+        detector = MethodTypeDetector()
+
+        # Create a mock object that raises exception on signature inspection
+        class MockFunction:
+            def __call__(self):
+                pass
+
+        mock_func = MockFunction()
+
+        # Monkey patch inspect.signature to raise TypeError
+        import inspect
+
+        original_signature = inspect.signature
+
+        def mock_signature(func):
+            if func is mock_func:
+                raise TypeError("Mock signature error")
+            return original_signature(func)
+
+        inspect.signature = mock_signature
+
+        try:
+            # Act
+            result = detector._has_first_parameter(mock_func, "cls")
+
+            # Assert
+            assert result is False
+        finally:
+            # Restore original function
+            inspect.signature = original_signature
+
+
+class TestArgumentFilter:
+    """Test ArgumentFilter implementation."""
+
+    def test_filter_method_arguments_instance_method(self) -> None:
+        """Test filtering for instance method."""
+        # Arrange
+        filter_instance = ArgumentFilter()
+
+        class TestClass:
+            def method(self, x: int) -> int:
+                return x
+
+        instance = TestClass()
+        args = (instance, 5)
+
+        # Act
+        result = filter_instance.filter_method_arguments(instance.method, args)
+
+        # Assert
+        assert result == (5,)
+
+    def test_filter_method_arguments_class_method(self) -> None:
+        """Test filtering for class method."""
+        # Arrange
+        filter_instance = ArgumentFilter()
+
+        class TestClass:
+            @classmethod
+            def class_method(cls, x: int) -> int:
+                return x
+
+        args = (TestClass, 5)
+
+        # Act
+        result = filter_instance.filter_method_arguments(TestClass.class_method, args)
+
+        # Assert
+        assert result == (5,)
+
+    def test_filter_method_arguments_regular_function(self) -> None:
+        """Test filtering for regular function."""
+        # Arrange
+        filter_instance = ArgumentFilter()
+
+        def regular_function(x: int, y: str) -> str:
+            return f"{x}:{y}"
+
+        args = (42, "test")
+
+        # Act
+        result = filter_instance.filter_method_arguments(regular_function, args)
+
+        # Assert
+        assert result == args
+
+    def test_filter_method_arguments_with_custom_detector(self) -> None:
+        """Test filtering with custom method detector."""
+        # Arrange
+        custom_detector = MethodTypeDetector()
+        filter_instance = ArgumentFilter(custom_detector)
+
+        def test_function(x: int) -> int:
+            return x
+
+        args = (1,)
+
+        # Act
+        result = filter_instance.filter_method_arguments(test_function, args)
+
+        # Assert
+        assert result == args

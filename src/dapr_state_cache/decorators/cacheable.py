@@ -14,7 +14,7 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
     from ..core import CacheOrchestrator, CacheService, SyncAsyncBridge
@@ -24,7 +24,7 @@ from ..protocols import KeyBuilder, ObservabilityHooks, Serializer
 
 logger = logging.getLogger(__name__)
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 class InvalidationMethods:
@@ -176,7 +176,7 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
         bridge: SyncAsyncBridge,
         ttl_seconds: int | None,
         condition: Callable[..., bool] | None,
-        bypass: Callable[..., bool] | None
+        bypass: Callable[..., bool] | None,
     ) -> None:
         """Initialize cacheable wrapper following Clean Code principles.
 
@@ -240,7 +240,6 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
             # Accessed on class - return unbound wrapper
             return self
 
-
         # Accessed on instance - return bound method wrapper
         return BoundMethodWrapper(instance=instance, cacheable_wrapper=self)
 
@@ -268,7 +267,7 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
             kwargs=kwargs,
             ttl_seconds=self._ttl_seconds,
             condition=self._condition,
-            bypass=self._bypass
+            bypass=self._bypass,
         )
 
     def __call_sync__(self, *args: Any, **kwargs: Any) -> Any:
@@ -310,7 +309,6 @@ class BoundMethodWrapper:
         """
         self._instance = instance
         self._wrapper = cacheable_wrapper
-
 
         # Copy attributes for transparent access
         self.__name__ = cacheable_wrapper.__name__

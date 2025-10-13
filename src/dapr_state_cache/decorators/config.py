@@ -26,7 +26,6 @@ class CacheConfig:
     ENV_DEFAULT_STORE_NAME = "DAPR_CACHE_DEFAULT_STORE_NAME"
     ENV_DEFAULT_CRYPTO_NAME = "DAPR_CACHE_DEFAULT_CRYPTO_NAME"
 
-
     # Default values
     DEFAULT_STORE_NAME = "cache"
     DEFAULT_TTL_SECONDS = 3600
@@ -48,11 +47,9 @@ class CacheConfig:
         if explicit_value is not None:
             return explicit_value
 
-
         env_value = os.getenv(cls.ENV_DEFAULT_STORE_NAME)
         if env_value:
             return env_value
-
 
         return cls.DEFAULT_STORE_NAME
 
@@ -71,11 +68,9 @@ class CacheConfig:
         if explicit_value is not None:
             return explicit_value
 
-
         env_value = os.getenv(cls.ENV_DEFAULT_CRYPTO_NAME)
         if env_value:
             return env_value
-
 
         return cls.DEFAULT_CRYPTO_COMPONENT_NAME
 
@@ -93,7 +88,6 @@ class CacheConfig:
         """
         if explicit_value is not None:
             return explicit_value
-
 
         return cls.DEFAULT_TTL_SECONDS
 

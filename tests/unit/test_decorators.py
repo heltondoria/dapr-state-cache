@@ -7,19 +7,15 @@ descriptor protocol, invalidation methods, and sync/async support following AAA 
 
 import os
 from unittest.mock import AsyncMock, Mock, patch
-from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from dapr_state_cache.decorators import (
     BoundMethodWrapper,
     CacheableWrapper,
-    CacheableWrapper,
     CacheConfig,
     cacheable,
-    cacheable,
 )
-from dapr_state_cache.protocols import KeyBuilder, ObservabilityHooks, Serializer
 from dapr_state_cache.protocols import KeyBuilder, ObservabilityHooks, Serializer
 
 
@@ -31,10 +27,8 @@ class TestCacheConfig:
         # Arrange
         explicit_value = "explicit-store"
 
-
         # Act
         result = CacheConfig.resolve_store_name(explicit_value)
-
 
         # Assert
         assert result == explicit_value
@@ -45,7 +39,6 @@ class TestCacheConfig:
         # Arrange & Act
         result = CacheConfig.resolve_store_name(None)
 
-
         # Assert
         assert result == "env-store"
 
@@ -55,7 +48,6 @@ class TestCacheConfig:
         # Arrange & Act
         result = CacheConfig.resolve_store_name(None)
 
-
         # Assert
         assert result == "cache"
 
@@ -64,10 +56,8 @@ class TestCacheConfig:
         # Arrange
         explicit_value = "explicit-crypto"
 
-
         # Act
         result = CacheConfig.resolve_crypto_component_name(explicit_value)
-
 
         # Assert
         assert result == explicit_value
@@ -78,7 +68,6 @@ class TestCacheConfig:
         # Arrange & Act
         result = CacheConfig.resolve_crypto_component_name(None)
 
-
         # Assert
         assert result == "env-crypto"
 
@@ -88,7 +77,6 @@ class TestCacheConfig:
         # Arrange & Act
         result = CacheConfig.resolve_crypto_component_name(None)
 
-
         # Assert
         assert result == "cache-crypto"
 
@@ -97,10 +85,8 @@ class TestCacheConfig:
         # Arrange
         explicit_value = 7200
 
-
         # Act
         result = CacheConfig.resolve_ttl_seconds(explicit_value)
-
 
         # Assert
         assert result == explicit_value
@@ -109,7 +95,6 @@ class TestCacheConfig:
         """Test TTL resolution with default value."""
         # Arrange & Act
         result = CacheConfig.resolve_ttl_seconds(None)
-
 
         # Assert
         assert result == 3600
@@ -180,15 +165,12 @@ class TestCacheableWrapper:
     def test_cacheable_wrapper_initialization(self) -> None:
         """Test CacheableWrapper initialization."""
 
-
         # Arrange
         def test_func() -> str:
             return "test"
 
-
         mock_orchestrator = Mock()
         mock_bridge = Mock()
-
 
         # Act
         wrapper = CacheableWrapper(
@@ -200,7 +182,6 @@ class TestCacheableWrapper:
             bypass=None,
         )
 
-
         # Assert
         assert wrapper._func is test_func
         assert wrapper._orchestrator is mock_orchestrator
@@ -211,24 +192,19 @@ class TestCacheableWrapper:
     def test_cacheable_wrapper_set_name_descriptor(self) -> None:
         """Test __set_name__ for descriptor protocol."""
 
-
         # Arrange
         def test_method(self) -> str:
             return "test"
-
 
         wrapper = CacheableWrapper(
             func=test_method, orchestrator=Mock(), bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
-
         class TestClass:
             pass
 
-
         # Act
         wrapper.__set_name__(TestClass, "cached_method")
-
 
         # Assert
         assert wrapper._owner_class is TestClass
@@ -237,24 +213,19 @@ class TestCacheableWrapper:
     def test_cacheable_wrapper_get_unbound(self) -> None:
         """Test __get__ returning unbound wrapper (class access)."""
 
-
         # Arrange
         def test_method(self) -> str:
             return "test"
-
 
         wrapper = CacheableWrapper(
             func=test_method, orchestrator=Mock(), bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
-
         class TestClass:
             pass
 
-
         # Act
         result = wrapper.__get__(None, TestClass)
-
 
         # Assert
         assert result is wrapper
@@ -262,27 +233,21 @@ class TestCacheableWrapper:
     def test_cacheable_wrapper_get_bound(self) -> None:
         """Test __get__ returning bound method wrapper (instance access)."""
 
-
         # Arrange
         def test_method(self) -> str:
             return "test"
-
 
         wrapper = CacheableWrapper(
             func=test_method, orchestrator=Mock(), bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
-
         class TestClass:
             pass
 
-
         instance = TestClass()
-
 
         # Act
         result = wrapper.__get__(instance, TestClass)
-
 
         # Assert
         assert isinstance(result, BoundMethodWrapper)
@@ -293,24 +258,19 @@ class TestCacheableWrapper:
     async def test_cacheable_wrapper_call_async(self) -> None:
         """Test async call through wrapper."""
 
-
         # Arrange
         def test_func(x: int) -> str:
             return f"result_{x}"
 
-
         mock_orchestrator = AsyncMock()
         mock_orchestrator.execute_with_cache.return_value = "cached_result"
-
 
         wrapper = CacheableWrapper(
             func=test_func, orchestrator=mock_orchestrator, bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
-
         # Act
         result = await wrapper(5)
-
 
         # Assert
         assert result == "cached_result"
@@ -321,24 +281,19 @@ class TestCacheableWrapper:
     def test_cacheable_wrapper_call_sync_with_async_func(self) -> None:
         """Test sync call of wrapper with async function."""
 
-
         # Arrange
         async def test_async_func(x: int) -> str:
             return f"async_result_{x}"
 
-
         mock_bridge = Mock()
         mock_bridge.run_async_in_sync.return_value = "sync_result"
-
 
         wrapper = CacheableWrapper(
             func=test_async_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
         )
 
-
         # Act
         result = wrapper.__call_sync__(5)
-
 
         # Assert
         assert result == "sync_result"
@@ -347,11 +302,9 @@ class TestCacheableWrapper:
     def test_cacheable_wrapper_call_sync_with_sync_func(self) -> None:
         """Test sync call of wrapper with sync function."""
 
-
         # Arrange
         def test_sync_func(x: int) -> str:
             return f"sync_result_{x}"
-
 
         mock_bridge = Mock()
         mock_bridge.run_async_in_sync.return_value = "bridge_result"
@@ -360,10 +313,8 @@ class TestCacheableWrapper:
             func=test_sync_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
         )
 
-
         # Act
         result = wrapper.__call_sync__(5)
-
 
         # Assert
         assert result == "bridge_result"
@@ -373,24 +324,19 @@ class TestCacheableWrapper:
     async def test_cacheable_wrapper_invalidate_async(self) -> None:
         """Test async cache invalidation."""
 
-
         # Arrange
         def test_func() -> str:
             return "test"
 
-
         mock_orchestrator = AsyncMock()
         mock_orchestrator.invalidate_cache.return_value = True
-
 
         wrapper = CacheableWrapper(
             func=test_func, orchestrator=mock_orchestrator, bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
-
         # Act
         result = await wrapper.invalidate(5, key="value")
-
 
         # Assert
         assert result is True
@@ -401,24 +347,19 @@ class TestCacheableWrapper:
     async def test_cacheable_wrapper_invalidate_prefix_async(self) -> None:
         """Test async cache prefix invalidation."""
 
-
         # Arrange
         def test_func() -> str:
             return "test"
 
-
         mock_orchestrator = AsyncMock()
         mock_orchestrator.invalidate_cache_prefix.return_value = True
-
 
         wrapper = CacheableWrapper(
             func=test_func, orchestrator=mock_orchestrator, bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
-
         # Act
         result = await wrapper.invalidate_prefix("cache:prefix")
-
 
         # Assert
         assert result is True
@@ -427,24 +368,19 @@ class TestCacheableWrapper:
     def test_cacheable_wrapper_invalidate_sync(self) -> None:
         """Test sync cache invalidation."""
 
-
         # Arrange
         def test_func() -> str:
             return "test"
 
-
         mock_bridge = Mock()
         mock_bridge.execute_auto_sync.return_value = True
-
 
         wrapper = CacheableWrapper(
             func=test_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
         )
 
-
         # Act
         result = wrapper.invalidate_sync(5, key="value")
-
 
         # Assert
         assert result is True
@@ -453,24 +389,19 @@ class TestCacheableWrapper:
     def test_cacheable_wrapper_invalidate_prefix_sync(self) -> None:
         """Test sync cache prefix invalidation."""
 
-
         # Arrange
         def test_func() -> str:
             return "test"
 
-
         mock_bridge = Mock()
         mock_bridge.execute_auto_sync.return_value = True
-
 
         wrapper = CacheableWrapper(
             func=test_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
         )
 
-
         # Act
         result = wrapper.invalidate_prefix_sync("cache:prefix")
-
 
         # Assert
         assert result is True
@@ -483,21 +414,17 @@ class TestBoundMethodWrapper:
     def test_bound_method_wrapper_initialization(self) -> None:
         """Test BoundMethodWrapper initialization."""
 
-
         # Arrange
         class TestClass:
             pass
-
 
         instance = TestClass()
         mock_cacheable_wrapper = Mock()
         mock_cacheable_wrapper.__name__ = "test_method"
         mock_cacheable_wrapper.__doc__ = "Test method"
 
-
         # Act
         bound_wrapper = BoundMethodWrapper(instance, mock_cacheable_wrapper)
-
 
         # Assert
         assert bound_wrapper._instance is instance
@@ -509,11 +436,9 @@ class TestBoundMethodWrapper:
     async def test_bound_method_wrapper_call_async_context(self) -> None:
         """Test bound method call in async context."""
 
-
         # Arrange
         class TestClass:
             pass
-
 
         instance = TestClass()
         mock_cacheable_wrapper = Mock()
@@ -523,10 +448,8 @@ class TestBoundMethodWrapper:
 
         bound_wrapper = BoundMethodWrapper(instance, mock_cacheable_wrapper)
 
-
         # Act
         result = await bound_wrapper(5, key="value")
-
 
         # Assert
         assert result == "bound_result"
@@ -535,29 +458,23 @@ class TestBoundMethodWrapper:
     def test_bound_method_wrapper_call_sync_context(self) -> None:
         """Test bound method call in sync context."""
 
-
         # Arrange
         class TestClass:
             pass
-
 
         instance = TestClass()
         mock_cacheable_wrapper = Mock()
         mock_cacheable_wrapper.__name__ = "test_method"
         mock_cacheable_wrapper.__doc__ = "Test method"
 
-
         # Configure __call_sync__ as a regular method
         mock_call_sync = Mock(return_value="sync_bound_result")
         mock_cacheable_wrapper.__call_sync__ = mock_call_sync
 
-
         bound_wrapper = BoundMethodWrapper(instance, mock_cacheable_wrapper)
-
 
         # Act
         result = bound_wrapper(5, key="value")
-
 
         # Assert
         assert result == "sync_bound_result"
@@ -567,23 +484,18 @@ class TestBoundMethodWrapper:
     async def test_bound_method_wrapper_invalidate_async(self) -> None:
         """Test bound method invalidation (async)."""
 
-
         # Arrange
         class TestClass:
             pass
-
 
         instance = TestClass()
         mock_cacheable_wrapper = AsyncMock()
         mock_cacheable_wrapper.invalidate.return_value = True
 
-
         bound_wrapper = BoundMethodWrapper(instance, mock_cacheable_wrapper)
-
 
         # Act
         result = await bound_wrapper.invalidate(5, key="value")
-
 
         # Assert
         assert result is True
@@ -592,11 +504,9 @@ class TestBoundMethodWrapper:
     def test_bound_method_wrapper_invalidate_sync(self) -> None:
         """Test bound method invalidation (sync)."""
 
-
         # Arrange
         class TestClass:
             pass
-
 
         instance = TestClass()
         mock_cacheable_wrapper = Mock()
@@ -604,13 +514,10 @@ class TestBoundMethodWrapper:
         mock_cacheable_wrapper.__doc__ = "Test method"
         mock_cacheable_wrapper.invalidate_sync.return_value = True
 
-
         bound_wrapper = BoundMethodWrapper(instance, mock_cacheable_wrapper)
-
 
         # Act
         result = bound_wrapper.invalidate_sync(5, key="value")
-
 
         # Assert
         assert result is True
@@ -620,23 +527,18 @@ class TestBoundMethodWrapper:
     async def test_bound_method_wrapper_invalidate_prefix_async(self) -> None:
         """Test bound method prefix invalidation (async)."""
 
-
         # Arrange
         class TestClass:
             pass
-
 
         instance = TestClass()
         mock_cacheable_wrapper = AsyncMock()
         mock_cacheable_wrapper.invalidate_prefix.return_value = True
 
-
         bound_wrapper = BoundMethodWrapper(instance, mock_cacheable_wrapper)
-
 
         # Act
         result = await bound_wrapper.invalidate_prefix("cache:prefix")
-
 
         # Assert
         assert result is True
@@ -645,11 +547,9 @@ class TestBoundMethodWrapper:
     def test_bound_method_wrapper_invalidate_prefix_sync(self) -> None:
         """Test bound method prefix invalidation (sync)."""
 
-
         # Arrange
         class TestClass:
             pass
-
 
         instance = TestClass()
         mock_cacheable_wrapper = Mock()
@@ -657,13 +557,10 @@ class TestBoundMethodWrapper:
         mock_cacheable_wrapper.__doc__ = "Test method"
         mock_cacheable_wrapper.invalidate_prefix_sync.return_value = True
 
-
         bound_wrapper = BoundMethodWrapper(instance, mock_cacheable_wrapper)
-
 
         # Act
         result = bound_wrapper.invalidate_prefix_sync("cache:prefix")
-
 
         # Assert
         assert result is True
@@ -685,14 +582,11 @@ class TestCacheableDecorator:
         mock_create_service.return_value = mock_service
         mock_create_orchestrator.return_value = mock_orchestrator
 
-
         def test_func() -> str:
             return "test"
 
-
         # Act
         decorated_func = cacheable()(test_func)
-
 
         # Assert
         assert isinstance(decorated_func, CacheableWrapper)
@@ -713,23 +607,18 @@ class TestCacheableDecorator:
         mock_create_service.return_value = mock_service
         mock_create_orchestrator.return_value = mock_orchestrator
 
-
         mock_key_builder = Mock(spec=KeyBuilder)
         mock_serializer = Mock(spec=Serializer)
         mock_hooks = Mock(spec=ObservabilityHooks)
 
-
         def mock_condition(x: int) -> bool:
             return x > 0
-
 
         def mock_bypass(x: int) -> bool:
             return x < 0
 
-
         def test_func(x: int) -> str:
             return f"result_{x}"
-
 
         # Act
         decorated_func = cacheable(
@@ -745,13 +634,11 @@ class TestCacheableDecorator:
             hooks=mock_hooks,
         )(test_func)
 
-
         # Assert
         assert isinstance(decorated_func, CacheableWrapper)
         assert decorated_func._ttl_seconds == 7200
         assert decorated_func._condition is mock_condition
         assert decorated_func._bypass is mock_bypass
-
 
         mock_create_service.assert_called_once_with(
             store_name="custom-store",
@@ -776,14 +663,11 @@ class TestCacheableDecorator:
         mock_create_service.return_value = mock_service
         mock_create_orchestrator.return_value = mock_orchestrator
 
-
         def test_func() -> str:
             return "test"
 
-
         # Act
         cacheable()(test_func)
-
 
         # Assert
         mock_create_service.assert_called_once()
@@ -794,11 +678,9 @@ class TestCacheableDecorator:
     def test_cacheable_decorator_parameter_validation_error(self) -> None:
         """Test @cacheable decorator with invalid parameters."""
 
-
         # Arrange
         def test_func() -> str:
             return "test"
-
 
         # Act & Assert
         with pytest.raises(ValueError, match="store_name cannot be empty"):
@@ -810,10 +692,8 @@ class TestCacheableDecorator:
         # Arrange
         mock_create_service.side_effect = Exception("Service creation failed")
 
-
         def test_func() -> str:
             return "test"
-
 
         # Act & Assert
         with pytest.raises(Exception, match="Service creation failed"):
@@ -835,15 +715,12 @@ class TestIntegrationScenarios:
         mock_create_service.return_value = mock_service
         mock_create_orchestrator.return_value = mock_orchestrator
 
-
         def original_function(x: int, y: str = "default") -> str:
             """Original function docstring."""
             return f"{x}_{y}"
 
-
         # Act
         decorated_func = cacheable()(original_function)
-
 
         # Assert
         assert decorated_func.__name__ == "original_function"
@@ -862,23 +739,18 @@ class TestIntegrationScenarios:
         mock_create_service.return_value = mock_service
         mock_create_orchestrator.return_value = mock_orchestrator
 
-
         class TestClass:
             @cacheable()
             def cached_method(self, x: int) -> str:
                 return f"method_result_{x}"
 
-
         instance = TestClass()
-
 
         # Act - access method on class (unbound)
         unbound = TestClass.cached_method
 
-
         # Act - access method on instance (bound)
         bound = instance.cached_method
-
 
         # Assert
         assert isinstance(unbound, CacheableWrapper)
@@ -895,17 +767,14 @@ class TestIntegrationScenarios:
         mock_create_service.return_value = mock_service
         mock_create_orchestrator.return_value = mock_orchestrator
 
-
         class TestClass:
             @staticmethod
             @cacheable()
             def cached_static_method(x: int) -> str:
                 return f"static_result_{x}"
 
-
         # Act - access static method
         static_method = TestClass.cached_static_method
-
 
         # Assert
         assert isinstance(static_method, CacheableWrapper)
@@ -920,17 +789,14 @@ class TestIntegrationScenarios:
         mock_create_service.return_value = mock_service
         mock_create_orchestrator.return_value = mock_orchestrator
 
-
         class TestClass:
             @classmethod
             @cacheable()
             def cached_class_method(cls, x: int) -> str:
                 return f"class_result_{x}"
 
-
         # Act - access class method
         class_method = TestClass.cached_class_method
-
 
         # Assert
         # Class method returns bound method automatically
@@ -948,15 +814,12 @@ class TestErrorHandling:
         # Arrange
         mock_create_service.side_effect = RuntimeError("Mock error")
 
-
         def test_func() -> str:
             return "test"
-
 
         # Act & Assert
         with pytest.raises(RuntimeError, match="Mock error"):
             cacheable()(test_func)
-
 
         # Verify logging
         mock_logger.error.assert_called_once()
@@ -974,18 +837,14 @@ class TestErrorHandling:
         mock_create_service.return_value = mock_service
         mock_create_orchestrator.return_value = mock_orchestrator
 
-
         def test_func() -> str:
             return "test"
-
 
         # Act
         decorated_func = cacheable()(test_func)
 
-
         # Assert
         assert isinstance(decorated_func, CacheableWrapper)
-
 
         # Verify logging
         mock_logger.debug.assert_any_call("Creating cacheable wrapper for function test_func")

@@ -14,28 +14,47 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, Optional, TypeVar
 
-from ..core import CacheOrchestrator, CacheService, SyncAsyncBridge
+if TYPE_CHECKING:
+    from ..core import CacheOrchestrator, CacheService, SyncAsyncBridge
+else:
+    from ..core import CacheOrchestrator, CacheService, SyncAsyncBridge
 from ..protocols import KeyBuilder, ObservabilityHooks, Serializer
 
 logger = logging.getLogger(__name__)
 
-F = TypeVar("F", bound=Callable[..., Any])
-F = TypeVar("F", bound=Callable[..., Any])
+F = TypeVar('F', bound=Callable[..., Any])
 
 
 class InvalidationMethods:
-    """Mixin providing cache invalidation methods."""
+    """Mixin providing cache invalidation methods.
+
+    This mixin provides async and sync invalidation methods for cache entries.
+    It requires the implementing class to have _orchestrator, _func, and _bridge attributes.
+    """
+
+    if TYPE_CHECKING:
+        # Type hints for attributes expected from implementing class
+        _orchestrator: "CacheOrchestrator"
+        _func: Callable
+        _bridge: "SyncAsyncBridge"
 
     def __init__(self) -> None:
+        """Initialize invalidation methods mixin.
+
+        Note: This mixin expects the implementing class to provide:
+        - _orchestrator: CacheOrchestrator instance
+        - _func: The wrapped function
+        - _bridge: SyncAsyncBridge instance
+        """
         # Initialize only if not already set by parent class
         if not hasattr(self, "_orchestrator"):
-            self._orchestrator: CacheOrchestrator = None  # type: ignore
-        if not hasattr(self, "_bridge"):
-            self._bridge: SyncAsyncBridge = None  # type: ignore
+            self._orchestrator = None  # type: ignore
         if not hasattr(self, "_func"):
-            self._func: Callable = None  # type: ignore
+            self._func = None  # type: ignore
+        if not hasattr(self, "_bridge"):
+            self._bridge = None  # type: ignore
 
     async def invalidate(self, *args: Any, **kwargs: Any) -> bool:
         """Invalidate cache entry for specific arguments (async).
@@ -157,10 +176,7 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
         bridge: SyncAsyncBridge,
         ttl_seconds: int | None,
         condition: Callable[..., bool] | None,
-        bypass: Callable[..., bool] | None,
-        ttl_seconds: int | None,
-        condition: Callable[..., bool] | None,
-        bypass: Callable[..., bool] | None,
+        bypass: Callable[..., bool] | None
     ) -> None:
         """Initialize cacheable wrapper following Clean Code principles.
 
@@ -252,8 +268,7 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
             kwargs=kwargs,
             ttl_seconds=self._ttl_seconds,
             condition=self._condition,
-            bypass=self._bypass,
-            bypass=self._bypass,
+            bypass=self._bypass
         )
 
     def __call_sync__(self, *args: Any, **kwargs: Any) -> Any:
@@ -265,7 +280,6 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
             # Sync function - execute through orchestrator using bridge
             return self._bridge.run_async_in_sync(self._async_call, *args, **kwargs)
 
-    @property
     @property
     def cache_service(self) -> CacheService:
         """Get the underlying cache service."""
@@ -354,11 +368,7 @@ class BoundMethodWrapper:
 def cacheable(
     store_name: str | None = None,
     ttl_seconds: int | None = None,
-    store_name: str | None = None,
-    ttl_seconds: int | None = None,
     key_prefix: str = "cache",
-    key_builder: KeyBuilder | None = None,
-    serializer: Serializer | None = None,
     key_builder: KeyBuilder | None = None,
     serializer: Serializer | None = None,
     use_dapr_crypto: bool = False,

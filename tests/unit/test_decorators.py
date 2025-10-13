@@ -123,7 +123,6 @@ class TestCacheConfig:
             key_prefix="valid-prefix",
             use_dapr_crypto=False,
             crypto_component_name=None,
-            crypto_component_name=None,
         )
 
     def test_validate_parameters_empty_store_name(self) -> None:
@@ -135,7 +134,6 @@ class TestCacheConfig:
                 ttl_seconds=3600,
                 key_prefix="valid-prefix",
                 use_dapr_crypto=False,
-                crypto_component_name=None,
                 crypto_component_name=None,
             )
 
@@ -149,7 +147,6 @@ class TestCacheConfig:
                 key_prefix="valid-prefix",
                 use_dapr_crypto=False,
                 crypto_component_name=None,
-                crypto_component_name=None,
             )
 
     def test_validate_parameters_empty_key_prefix(self) -> None:
@@ -162,7 +159,6 @@ class TestCacheConfig:
                 key_prefix="",
                 use_dapr_crypto=False,
                 crypto_component_name=None,
-                crypto_component_name=None,
             )
 
     def test_validate_parameters_crypto_without_component_name(self) -> None:
@@ -174,7 +170,6 @@ class TestCacheConfig:
                 ttl_seconds=3600,
                 key_prefix="valid-prefix",
                 use_dapr_crypto=True,
-                crypto_component_name=None,
                 crypto_component_name=None,
             )
 
@@ -203,7 +198,6 @@ class TestCacheableWrapper:
             ttl_seconds=3600,
             condition=None,
             bypass=None,
-            bypass=None,
         )
 
 
@@ -224,7 +218,6 @@ class TestCacheableWrapper:
 
 
         wrapper = CacheableWrapper(
-            func=test_method, orchestrator=Mock(), bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
             func=test_method, orchestrator=Mock(), bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
@@ -252,7 +245,6 @@ class TestCacheableWrapper:
 
         wrapper = CacheableWrapper(
             func=test_method, orchestrator=Mock(), bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
-            func=test_method, orchestrator=Mock(), bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
 
@@ -277,7 +269,6 @@ class TestCacheableWrapper:
 
 
         wrapper = CacheableWrapper(
-            func=test_method, orchestrator=Mock(), bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
             func=test_method, orchestrator=Mock(), bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
@@ -314,7 +305,6 @@ class TestCacheableWrapper:
 
         wrapper = CacheableWrapper(
             func=test_func, orchestrator=mock_orchestrator, bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
-            func=test_func, orchestrator=mock_orchestrator, bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
 
@@ -325,7 +315,6 @@ class TestCacheableWrapper:
         # Assert
         assert result == "cached_result"
         mock_orchestrator.execute_with_cache.assert_called_once_with(
-            func=test_func, args=(5,), kwargs={}, ttl_seconds=3600, condition=None, bypass=None
             func=test_func, args=(5,), kwargs={}, ttl_seconds=3600, condition=None, bypass=None
         )
 
@@ -343,7 +332,6 @@ class TestCacheableWrapper:
 
 
         wrapper = CacheableWrapper(
-            func=test_async_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
             func=test_async_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
         )
 
@@ -369,7 +357,6 @@ class TestCacheableWrapper:
         mock_bridge.run_async_in_sync.return_value = "bridge_result"
 
         wrapper = CacheableWrapper(
-            func=test_sync_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
             func=test_sync_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
         )
 
@@ -397,7 +384,6 @@ class TestCacheableWrapper:
 
 
         wrapper = CacheableWrapper(
-            func=test_func, orchestrator=mock_orchestrator, bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
             func=test_func, orchestrator=mock_orchestrator, bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
@@ -427,7 +413,6 @@ class TestCacheableWrapper:
 
         wrapper = CacheableWrapper(
             func=test_func, orchestrator=mock_orchestrator, bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
-            func=test_func, orchestrator=mock_orchestrator, bridge=Mock(), ttl_seconds=3600, condition=None, bypass=None
         )
 
 
@@ -454,7 +439,6 @@ class TestCacheableWrapper:
 
         wrapper = CacheableWrapper(
             func=test_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
-            func=test_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
         )
 
 
@@ -480,7 +464,6 @@ class TestCacheableWrapper:
 
 
         wrapper = CacheableWrapper(
-            func=test_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
             func=test_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
         )
 
@@ -694,7 +677,6 @@ class TestCacheableDecorator:
     @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_cacheable_decorator_minimal_parameters(
         self, mock_create_orchestrator: Mock, mock_create_service: Mock
-        self, mock_create_orchestrator: Mock, mock_create_service: Mock
     ) -> None:
         """Test @cacheable decorator with minimal parameters."""
         # Arrange
@@ -722,7 +704,6 @@ class TestCacheableDecorator:
     @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
     @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_cacheable_decorator_all_parameters(
-        self, mock_create_orchestrator: Mock, mock_create_service: Mock
         self, mock_create_orchestrator: Mock, mock_create_service: Mock
     ) -> None:
         """Test @cacheable decorator with all parameters."""
@@ -762,7 +743,6 @@ class TestCacheableDecorator:
             condition=mock_condition,
             bypass=mock_bypass,
             hooks=mock_hooks,
-            hooks=mock_hooks,
         )(test_func)
 
 
@@ -781,14 +761,12 @@ class TestCacheableDecorator:
             use_dapr_crypto=True,
             crypto_component_name="custom-crypto",
             hooks=mock_hooks,
-            hooks=mock_hooks,
         )
 
     @patch.dict(os.environ, {"DAPR_CACHE_DEFAULT_STORE_NAME": "env-store"})
     @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
     @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_cacheable_decorator_environment_variable_resolution(
-        self, mock_create_orchestrator: Mock, mock_create_service: Mock
         self, mock_create_orchestrator: Mock, mock_create_service: Mock
     ) -> None:
         """Test @cacheable decorator with environment variable resolution."""
@@ -849,7 +827,6 @@ class TestIntegrationScenarios:
     @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_function_decoration_and_metadata_preservation(
         self, mock_create_orchestrator: Mock, mock_create_service: Mock
-        self, mock_create_orchestrator: Mock, mock_create_service: Mock
     ) -> None:
         """Test that function decoration preserves metadata."""
         # Arrange
@@ -876,7 +853,6 @@ class TestIntegrationScenarios:
     @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
     @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_method_decoration_descriptor_protocol(
-        self, mock_create_orchestrator: Mock, mock_create_service: Mock
         self, mock_create_orchestrator: Mock, mock_create_service: Mock
     ) -> None:
         """Test method decoration with descriptor protocol."""
@@ -989,7 +965,6 @@ class TestErrorHandling:
     @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
     @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_decorator_logs_successful_creation(
-        self, mock_create_orchestrator: Mock, mock_create_service: Mock, mock_logger: Mock
         self, mock_create_orchestrator: Mock, mock_create_service: Mock, mock_logger: Mock
     ) -> None:
         """Test that decorator logs successful wrapper creation."""

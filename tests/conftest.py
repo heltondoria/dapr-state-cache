@@ -97,7 +97,4 @@ def reset_global_state():
 
     # Function might not exist yet during test initialization, safe to ignore
     with contextlib.suppress(ImportError, AttributeError):
-
-    # Function might not exist yet during test initialization, safe to ignore
-    with contextlib.suppress(ImportError, AttributeError):
         _reset_default_bridge()

@@ -35,7 +35,6 @@ class CacheConfig:
 
     @classmethod
     def resolve_store_name(cls, explicit_value: str | None = None) -> str:
-    def resolve_store_name(cls, explicit_value: str | None = None) -> str:
         """Resolve store name following precedence rules.
 
 
@@ -58,7 +57,6 @@ class CacheConfig:
         return cls.DEFAULT_STORE_NAME
 
     @classmethod
-    def resolve_crypto_component_name(cls, explicit_value: str | None = None) -> str:
     def resolve_crypto_component_name(cls, explicit_value: str | None = None) -> str:
         """Resolve crypto component name following precedence rules.
 
@@ -83,7 +81,6 @@ class CacheConfig:
 
     @classmethod
     def resolve_ttl_seconds(cls, explicit_value: int | None = None) -> int:
-    def resolve_ttl_seconds(cls, explicit_value: int | None = None) -> int:
         """Resolve TTL seconds with default fallback.
 
 
@@ -105,10 +102,8 @@ class CacheConfig:
         cls,
         store_name: str,
         ttl_seconds: int | None,
-        ttl_seconds: int | None,
         key_prefix: str,
         use_dapr_crypto: bool,
-        crypto_component_name: str | None,
         crypto_component_name: str | None,
     ) -> None:
         """Validate cache configuration parameters.

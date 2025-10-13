@@ -284,6 +284,25 @@ class CacheMetrics:
             key_stats = self._key_stats[key]
             key_stats.errors += 1
 
+    def _copy_cache_stats(self, stats: CacheStats) -> CacheStats:
+        """Create a deep copy of CacheStats to avoid external modification.
+
+        Args:
+            stats: Original cache statistics
+
+        Returns:
+            Deep copy of cache statistics
+        """
+        return CacheStats(
+            hits=stats.hits,
+            misses=stats.misses,
+            writes=stats.writes,
+            errors=stats.errors,
+            hit_latencies=stats.hit_latencies.copy(),
+            miss_latencies=stats.miss_latencies.copy(),
+            write_sizes=stats.write_sizes.copy(),
+        )
+
     def get_overall_stats(self) -> CacheStats:
         """Get overall statistics across all keys.
 
@@ -292,15 +311,7 @@ class CacheMetrics:
         """
         with self._lock:
             # Return a deep copy to avoid external modification
-            return CacheStats(
-                hits=self._overall_stats.hits,
-                misses=self._overall_stats.misses,
-                writes=self._overall_stats.writes,
-                errors=self._overall_stats.errors,
-                hit_latencies=self._overall_stats.hit_latencies.copy(),
-                miss_latencies=self._overall_stats.miss_latencies.copy(),
-                write_sizes=self._overall_stats.write_sizes.copy(),
-            )
+            return self._copy_cache_stats(self._overall_stats)
 
     def get_key_stats(self, key: str) -> CacheStats | None:
         """Get statistics for a specific key.
@@ -315,16 +326,7 @@ class CacheMetrics:
             if key not in self._key_stats:
                 return None
 
-            stats = self._key_stats[key]
-            return CacheStats(
-                hits=stats.hits,
-                misses=stats.misses,
-                writes=stats.writes,
-                errors=stats.errors,
-                hit_latencies=stats.hit_latencies.copy(),
-                miss_latencies=stats.miss_latencies.copy(),
-                write_sizes=stats.write_sizes.copy(),
-            )
+            return self._copy_cache_stats(self._key_stats[key])
 
     def get_all_key_stats(self) -> dict[str, CacheStats]:
         """Get statistics for all tracked keys.
@@ -333,18 +335,31 @@ class CacheMetrics:
             Dictionary mapping keys to their statistics
         """
         with self._lock:
-            return {
-                key: CacheStats(
-                    hits=stats.hits,
-                    misses=stats.misses,
-                    writes=stats.writes,
-                    errors=stats.errors,
-                    hit_latencies=stats.hit_latencies.copy(),
-                    miss_latencies=stats.miss_latencies.copy(),
-                    write_sizes=stats.write_sizes.copy(),
-                )
-                for key, stats in self._key_stats.items()
-            }
+            return {key: self._copy_cache_stats(stats) for key, stats in self._key_stats.items()}
+
+    def _get_top_keys_by_metric(self, metric_getter: str, total_metric: int, limit: int = 10) -> list[TopKeysResult]:
+        """Generic method to get top keys by a specific metric.
+
+        Args:
+            metric_getter: Attribute name to sort by (e.g., 'hits', 'misses')
+            total_metric: Total count for percentage calculation
+            limit: Maximum number of keys to return
+
+        Returns:
+            List of top keys by metric, sorted descending
+        """
+        # Sort keys by metric count
+        sorted_keys = sorted(self._key_stats.items(), key=lambda item: getattr(item[1], metric_getter), reverse=True)
+
+        return [
+            TopKeysResult(
+                key=key,
+                count=getattr(stats, metric_getter),
+                percentage=getattr(stats, metric_getter) / total_metric * 100 if total_metric > 0 else 0.0,
+            )
+            for key, stats in sorted_keys[:limit]
+            if getattr(stats, metric_getter) > 0
+        ]
 
     def get_top_keys_by_hits(self, limit: int = 10) -> list[TopKeysResult]:
         """Get top keys by hit count.
@@ -356,18 +371,7 @@ class CacheMetrics:
             List of top keys by hits, sorted descending
         """
         with self._lock:
-            total_hits = self._overall_stats.hits
-
-            # Sort keys by hit count
-            sorted_keys = sorted(self._key_stats.items(), key=lambda item: item[1].hits, reverse=True)
-
-            return [
-                TopKeysResult(
-                    key=key, count=stats.hits, percentage=stats.hits / total_hits * 100 if total_hits > 0 else 0.0
-                )
-                for key, stats in sorted_keys[:limit]
-                if stats.hits > 0
-            ]
+            return self._get_top_keys_by_metric("hits", self._overall_stats.hits, limit)
 
     def get_top_keys_by_misses(self, limit: int = 10) -> list[TopKeysResult]:
         """Get top keys by miss count.
@@ -379,20 +383,7 @@ class CacheMetrics:
             List of top keys by misses, sorted descending
         """
         with self._lock:
-            total_misses = self._overall_stats.misses
-
-            # Sort keys by miss count
-            sorted_keys = sorted(self._key_stats.items(), key=lambda item: item[1].misses, reverse=True)
-
-            return [
-                TopKeysResult(
-                    key=key,
-                    count=stats.misses,
-                    percentage=stats.misses / total_misses * 100 if total_misses > 0 else 0.0,
-                )
-                for key, stats in sorted_keys[:limit]
-                if stats.misses > 0
-            ]
+            return self._get_top_keys_by_metric("misses", self._overall_stats.misses, limit)
 
     def get_top_keys_by_writes(self, limit: int = 10) -> list[TopKeysResult]:
         """Get top keys by write count.
@@ -404,20 +395,7 @@ class CacheMetrics:
             List of top keys by writes, sorted descending
         """
         with self._lock:
-            total_writes = self._overall_stats.writes
-
-            # Sort keys by write count
-            sorted_keys = sorted(self._key_stats.items(), key=lambda item: item[1].writes, reverse=True)
-
-            return [
-                TopKeysResult(
-                    key=key,
-                    count=stats.writes,
-                    percentage=stats.writes / total_writes * 100 if total_writes > 0 else 0.0,
-                )
-                for key, stats in sorted_keys[:limit]
-                if stats.writes > 0
-            ]
+            return self._get_top_keys_by_metric("writes", self._overall_stats.writes, limit)
 
     def get_top_keys_by_errors(self, limit: int = 10) -> list[TopKeysResult]:
         """Get top keys by error count.
@@ -429,20 +407,7 @@ class CacheMetrics:
             List of top keys by errors, sorted descending
         """
         with self._lock:
-            total_errors = self._overall_stats.errors
-
-            # Sort keys by error count
-            sorted_keys = sorted(self._key_stats.items(), key=lambda item: item[1].errors, reverse=True)
-
-            return [
-                TopKeysResult(
-                    key=key,
-                    count=stats.errors,
-                    percentage=stats.errors / total_errors * 100 if total_errors > 0 else 0.0,
-                )
-                for key, stats in sorted_keys[:limit]
-                if stats.errors > 0
-            ]
+            return self._get_top_keys_by_metric("errors", self._overall_stats.errors, limit)
 
     def reset_stats(self) -> None:
         """Reset all collected statistics."""
@@ -590,6 +555,47 @@ class MetricsCollectorHooks:
         """Get the underlying metrics collector."""
         return self._metrics
 
+    def _build_overall_stats_dict(self, stats: CacheStats) -> dict[str, Any]:
+        """Build overall statistics dictionary.
+
+        Args:
+            stats: Overall cache statistics
+
+        Returns:
+            Dictionary with overall statistics
+        """
+        return {
+            "hits": stats.hits,
+            "misses": stats.misses,
+            "writes": stats.writes,
+            "errors": stats.errors,
+            "hit_ratio": stats.hit_ratio,
+            "average_hit_latency": stats.average_hit_latency_ms,
+            "average_miss_latency": stats.average_miss_latency_ms,
+        }
+
+    def _build_key_stats_dict(self, all_key_stats: dict[str, CacheStats]) -> dict[str, dict[str, Any]]:
+        """Build per-key statistics dictionary.
+
+        Args:
+            all_key_stats: Dictionary of all key statistics
+
+        Returns:
+            Dictionary with per-key statistics
+        """
+        return {
+            key: {
+                "hits": stats.hits,
+                "misses": stats.misses,
+                "writes": stats.writes,
+                "errors": stats.errors,
+                "hit_ratio": stats.hit_ratio,
+                "average_hit_latency": stats.average_hit_latency_ms,
+                "average_miss_latency": stats.average_miss_latency_ms,
+            }
+            for key, stats in all_key_stats.items()
+        }
+
     async def get_stats(self) -> dict[str, Any]:
         """Get current metrics statistics.
 
@@ -600,27 +606,8 @@ class MetricsCollectorHooks:
         all_key_stats = self._metrics.get_all_key_stats()
 
         return {
-            "overall": {
-                "hits": overall_stats.hits,
-                "misses": overall_stats.misses,
-                "writes": overall_stats.writes,
-                "errors": overall_stats.errors,
-                "hit_ratio": overall_stats.hit_ratio,
-                "average_hit_latency": overall_stats.average_hit_latency_ms,
-                "average_miss_latency": overall_stats.average_miss_latency_ms,
-            },
-            "by_key": {
-                key: {
-                    "hits": stats.hits,
-                    "misses": stats.misses,
-                    "writes": stats.writes,
-                    "errors": stats.errors,
-                    "hit_ratio": stats.hit_ratio,
-                    "average_hit_latency": stats.average_hit_latency_ms,
-                    "average_miss_latency": stats.average_miss_latency_ms,
-                }
-                for key, stats in all_key_stats.items()
-            },
+            "overall": self._build_overall_stats_dict(overall_stats),
+            "by_key": self._build_key_stats_dict(all_key_stats),
         }
 
     def on_cache_hit(self, key: str, latency: float) -> None:

@@ -376,6 +376,72 @@ class TestCompositeObservabilityHooks:
         hook2.on_cache_hit.assert_called_once_with(key, latency)  # Should still be called
         mock_logger.warning.assert_called_once()
 
+    @patch("dapr_state_cache.observability.hooks.logger")
+    def test_composite_on_cache_miss_handles_hook_errors(self, mock_logger: Mock) -> None:
+        """Test that hook errors in cache miss are handled gracefully."""
+        # Arrange
+        from dapr_state_cache.protocols import ObservabilityHooks
+
+        hook1 = Mock(spec=ObservabilityHooks)
+        hook1.on_cache_miss.side_effect = Exception("Miss hook error")
+        hook2 = Mock(spec=ObservabilityHooks)
+
+        composite = CompositeObservabilityHooks([hook1, hook2])
+        key = "test:key"
+        latency = 0.2
+
+        # Act
+        composite.on_cache_miss(key, latency)
+
+        # Assert
+        hook1.on_cache_miss.assert_called_once_with(key, latency)
+        hook2.on_cache_miss.assert_called_once_with(key, latency)  # Should still be called
+        mock_logger.warning.assert_called_once()
+
+    @patch("dapr_state_cache.observability.hooks.logger")
+    def test_composite_on_cache_write_handles_hook_errors(self, mock_logger: Mock) -> None:
+        """Test that hook errors in cache write are handled gracefully."""
+        # Arrange
+        from dapr_state_cache.protocols import ObservabilityHooks
+
+        hook1 = Mock(spec=ObservabilityHooks)
+        hook1.on_cache_write.side_effect = Exception("Write hook error")
+        hook2 = Mock(spec=ObservabilityHooks)
+
+        composite = CompositeObservabilityHooks([hook1, hook2])
+        key = "test:key"
+        size = 1024
+
+        # Act
+        composite.on_cache_write(key, size)
+
+        # Assert
+        hook1.on_cache_write.assert_called_once_with(key, size)
+        hook2.on_cache_write.assert_called_once_with(key, size)  # Should still be called
+        mock_logger.warning.assert_called_once()
+
+    @patch("dapr_state_cache.observability.hooks.logger")
+    def test_composite_on_cache_error_handles_hook_errors(self, mock_logger: Mock) -> None:
+        """Test that hook errors in cache error are handled gracefully."""
+        # Arrange
+        from dapr_state_cache.protocols import ObservabilityHooks
+
+        hook1 = Mock(spec=ObservabilityHooks)
+        hook1.on_cache_error.side_effect = Exception("Error hook error")
+        hook2 = Mock(spec=ObservabilityHooks)
+
+        composite = CompositeObservabilityHooks([hook1, hook2])
+        key = "test:key"
+        error = ValueError("original error")
+
+        # Act
+        composite.on_cache_error(key, error)
+
+        # Assert
+        hook1.on_cache_error.assert_called_once_with(key, error)
+        hook2.on_cache_error.assert_called_once_with(key, error)  # Should still be called
+        mock_logger.warning.assert_called_once()
+
     def test_composite_on_cache_miss_delegates_to_all(self) -> None:
         """Test that cache miss is delegated to all hooks."""
         # Arrange
@@ -889,6 +955,53 @@ class TestMetricsCollectorHooks:
 
         # Assert
         assert result is custom_metrics
+
+    @pytest.mark.asyncio
+    async def test_get_stats_returns_structured_data(self) -> None:
+        """Test that get_stats returns properly structured statistics."""
+        # Arrange
+        metrics = CacheMetrics()
+        hooks = MetricsCollectorHooks(metrics)
+        
+        # Record some test data
+        hooks.on_cache_hit("key1", 0.1)
+        hooks.on_cache_miss("key1", 0.2)
+        hooks.on_cache_write("key1", 500)
+        hooks.on_cache_error("key2", ValueError("test"))
+
+        # Act
+        stats = await hooks.get_stats()
+
+        # Assert
+        assert isinstance(stats, dict)
+        assert "overall" in stats
+        assert "by_key" in stats
+        
+        # Check overall stats structure
+        overall = stats["overall"]
+        assert overall["hits"] == 1
+        assert overall["misses"] == 1
+        assert overall["writes"] == 1
+        assert overall["errors"] == 1
+        assert overall["hit_ratio"] == 0.5  # 1 hit out of 2 operations
+        assert overall["average_hit_latency"] == 100.0  # 0.1s * 1000ms
+        assert overall["average_miss_latency"] == 200.0  # 0.2s * 1000ms
+        
+        # Check by-key stats structure
+        by_key = stats["by_key"]
+        assert len(by_key) == 2  # key1 and key2
+        assert "key1" in by_key
+        assert "key2" in by_key
+        
+        key1_stats = by_key["key1"]
+        assert key1_stats["hits"] == 1
+        assert key1_stats["misses"] == 1
+        assert key1_stats["writes"] == 1
+        assert key1_stats["errors"] == 0
+        
+        key2_stats = by_key["key2"]
+        assert key2_stats["errors"] == 1
+        assert key2_stats["hits"] == 0
 
 
 class TestObservabilityIntegration:

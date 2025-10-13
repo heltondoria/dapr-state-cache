@@ -21,13 +21,11 @@ from .metrics import (
 )
 
 __all__ = [
-    # Hook implementations
-    "DefaultObservabilityHooks",
-    "SilentObservabilityHooks",
-    "CompositeObservabilityHooks",
-    # Metrics
-    "CacheStats",
-    "TopKeysResult",
     "CacheMetrics",
+    "CacheStats",
+    "CompositeObservabilityHooks",
+    "DefaultObservabilityHooks",
     "MetricsCollectorHooks",
+    "SilentObservabilityHooks",
+    "TopKeysResult",
 ]

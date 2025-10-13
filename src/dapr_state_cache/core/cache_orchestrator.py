@@ -105,34 +105,27 @@ class CacheOrchestrator:
             Function result (from cache or computation)
         """
         try:
-            # Use coordinator for main orchestration flow
-            result = await self._coordinator.orchestrate_cache_operation(
+            # Use coordinator for bypass and cache lookup decisions
+            operation_completed, result = await self._coordinator.orchestrate_cache_operation(
                 func, args, kwargs, ttl_seconds, condition, bypass
             )
 
-            # For cache misses, use deduplication to prevent thundering herd
-            if not await self._was_cache_hit(func, args, kwargs):
-                cache_key = self._cache_service._build_cache_key(func, args, kwargs)
+            if operation_completed:
+                return result
 
-                async def compute_and_store() -> Any:
-                    return await self._computation_handler.compute_and_cache_result(
-                        func, args, kwargs, ttl_seconds, condition
-                    )
+            cache_key = self._cache_service._build_cache_key(func, args, kwargs)
 
-                return await self._deduplication_manager.deduplicate(cache_key, compute_and_store)
+            async def compute_and_store() -> Any:
+                return await self._computation_handler.compute_and_cache_result(
+                    func, args, kwargs, ttl_seconds, condition
+                )
 
-            return result
+            return await self._deduplication_manager.deduplicate(cache_key, compute_and_store)
 
         except Exception as e:
             logger.error(f"Cache orchestration failed for {func.__name__}: {e}")
             # Fallback to direct execution on any orchestration error
             return await self._execute_function_directly(func, args, kwargs)
-
-    async def _was_cache_hit(self, func: Callable, args: tuple, kwargs: dict) -> bool:
-        """Check if the last operation was a cache hit."""
-        # Simple implementation - in production, this could be more sophisticated
-        cached_result = await self._cache_service.get(func, args, kwargs)
-        return cached_result is not None
 
     async def invalidate_cache(self, func: Callable, args: tuple, kwargs: dict) -> bool:
         """Invalidate cache entry for specific function call.

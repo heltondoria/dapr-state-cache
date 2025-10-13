@@ -496,3 +496,86 @@ class TestDefaultKeyBuilder:
             builder.build_key(problematic_function, args, kwargs)
 
         assert "Failed to build cache key" in str(exc_info.value)
+
+    def test_is_class_method_classmethod_decorator(self) -> None:
+        """Test detection of classmethod decorator - linha 111."""
+        # Arrange  
+        builder = DefaultKeyBuilder()
+        
+        # Create a classmethod directly (não bound)
+        def raw_function(cls):
+            return cls
+        
+        class_method_func = classmethod(raw_function)
+        
+        # Act
+        result = builder._is_class_method(class_method_func)
+        
+        # Assert
+        assert result is True
+        
+    def test_has_self_parameter_invalid_signature(self) -> None:
+        """Test _has_self_parameter exception handling - linhas 122-123."""
+        # Arrange
+        builder = DefaultKeyBuilder()
+        
+        # Create a mock object that raises exception on signature inspection
+        class MockFunction:
+            def __call__(self):
+                pass
+        
+        mock_func = MockFunction()
+        
+        # Monkey patch inspect.signature to raise ValueError
+        import inspect
+        original_signature = inspect.signature
+        
+        def mock_signature(func):
+            if func is mock_func:
+                raise ValueError("Mock signature error")
+            return original_signature(func)
+        
+        inspect.signature = mock_signature
+        
+        try:
+            # Act
+            result = builder._has_self_parameter(mock_func)
+            
+            # Assert
+            assert result is False
+        finally:
+            # Restore original function
+            inspect.signature = original_signature
+            
+    def test_has_cls_parameter_invalid_signature(self) -> None:
+        """Test _has_cls_parameter exception handling - linhas 131-132."""
+        # Arrange
+        builder = DefaultKeyBuilder()
+        
+        # Create a mock object that raises exception on signature inspection  
+        class MockFunction:
+            def __call__(self):
+                pass
+        
+        mock_func = MockFunction()
+        
+        # Monkey patch inspect.signature to raise TypeError
+        import inspect
+        original_signature = inspect.signature
+        
+        def mock_signature(func):
+            if func is mock_func:
+                raise TypeError("Mock signature error")
+            return original_signature(func)
+        
+        inspect.signature = mock_signature
+        
+        try:
+            # Act
+            result = builder._has_cls_parameter(mock_func)
+            
+            # Assert  
+            assert result is False
+        finally:
+            # Restore original function
+            inspect.signature = original_signature

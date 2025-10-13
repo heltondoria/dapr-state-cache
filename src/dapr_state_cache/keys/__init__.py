@@ -16,9 +16,9 @@ from .hash_utils import (
 __all__ = [
     # Key builders
     "DefaultKeyBuilder",
-    # Hash utilities
+    # Hash utilities (ordem alfabética)
     "calculate_deterministic_hash",
     "calculate_hash_for_args",
-    "truncate_hash",
     "create_cache_key",
+    "truncate_hash",
 ]

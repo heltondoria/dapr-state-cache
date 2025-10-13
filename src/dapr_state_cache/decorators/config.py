@@ -84,7 +84,7 @@ class CacheConfig:
 
     @classmethod
     def validate_parameters(
-        self,
+        cls,
         store_name: str,
         ttl_seconds: int | None,
         key_prefix: str,
@@ -103,18 +103,60 @@ class CacheConfig:
         Raises:
             ValueError: If any parameter is invalid
         """
-        # Validate store_name
+        cls._validate_store_name(store_name)
+        cls._validate_ttl_seconds(ttl_seconds)
+        cls._validate_key_prefix(key_prefix)
+        cls._validate_crypto_config(use_dapr_crypto, crypto_component_name)
+
+    @classmethod
+    def _validate_store_name(cls, store_name: str) -> None:
+        """Validate store name parameter.
+
+        Args:
+            store_name: Dapr state store name
+
+        Raises:
+            ValueError: If store_name is invalid
+        """
         if not store_name or not store_name.strip():
             raise ValueError("store_name cannot be empty")
 
-        # Validate TTL
+    @classmethod
+    def _validate_ttl_seconds(cls, ttl_seconds: int | None) -> None:
+        """Validate TTL seconds parameter.
+
+        Args:
+            ttl_seconds: TTL in seconds (None for default)
+
+        Raises:
+            ValueError: If ttl_seconds is invalid
+        """
         if ttl_seconds is not None and ttl_seconds < 1:
             raise ValueError(f"ttl_seconds must be >= 1 or None, got {ttl_seconds}")
 
-        # Validate key_prefix
+    @classmethod
+    def _validate_key_prefix(cls, key_prefix: str) -> None:
+        """Validate key prefix parameter.
+
+        Args:
+            key_prefix: Cache key prefix
+
+        Raises:
+            ValueError: If key_prefix is invalid
+        """
         if not key_prefix or not key_prefix.strip():
             raise ValueError("key_prefix cannot be empty")
 
-        # Validate crypto configuration
+    @classmethod
+    def _validate_crypto_config(cls, use_dapr_crypto: bool, crypto_component_name: str | None) -> None:
+        """Validate crypto configuration parameters.
+
+        Args:
+            use_dapr_crypto: Whether to use Dapr cryptography
+            crypto_component_name: Crypto component name
+
+        Raises:
+            ValueError: If crypto configuration is invalid
+        """
         if use_dapr_crypto and not crypto_component_name:
             raise ValueError("crypto_component_name is required when use_dapr_crypto=True")

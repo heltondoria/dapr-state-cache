@@ -10,14 +10,20 @@ from .cacheable import (
     CacheableWrapper,
     cacheable,
 )
+from .cacheable_factory import CacheDecoratorFactory
+from .component_builder import CacheComponentBuilder
 from .config import CacheConfig
+from .configuration_resolver import CacheConfigurationResolver, ResolvedCacheConfig
+from .wrapper_builder import CacheableWrapperBuilder
 
 __all__ = [
-    # Main decorator
-    "cacheable",
-    # Wrapper classes (for advanced use)
-    "CacheableWrapper",
     "BoundMethodWrapper",
-    # Configuration
+    "CacheComponentBuilder",
     "CacheConfig",
+    "CacheConfigurationResolver",
+    "CacheDecoratorFactory",
+    "CacheableWrapper",
+    "CacheableWrapperBuilder",
+    "ResolvedCacheConfig",
+    "cacheable",
 ]

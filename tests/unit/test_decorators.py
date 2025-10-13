@@ -307,7 +307,7 @@ class TestCacheableWrapper:
             return f"sync_result_{x}"
 
         mock_bridge = Mock()
-        mock_bridge.execute_auto_sync.return_value = "bridge_result"
+        mock_bridge.run_async_in_sync.return_value = "bridge_result"
 
         wrapper = CacheableWrapper(
             func=test_sync_func, orchestrator=Mock(), bridge=mock_bridge, ttl_seconds=3600, condition=None, bypass=None
@@ -318,7 +318,7 @@ class TestCacheableWrapper:
 
         # Assert
         assert result == "bridge_result"
-        mock_bridge.execute_auto_sync.assert_called_once()
+        mock_bridge.run_async_in_sync.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_cacheable_wrapper_invalidate_async(self) -> None:
@@ -440,8 +440,10 @@ class TestBoundMethodWrapper:
             pass
 
         instance = TestClass()
-        mock_cacheable_wrapper = AsyncMock()
-        mock_cacheable_wrapper.return_value = "bound_result"
+        mock_cacheable_wrapper = Mock()
+        mock_cacheable_wrapper.__name__ = "test_method"
+        mock_cacheable_wrapper.__doc__ = "test doc"
+        mock_cacheable_wrapper._async_call = AsyncMock(return_value="bound_result")
 
         bound_wrapper = BoundMethodWrapper(instance, mock_cacheable_wrapper)
 
@@ -450,7 +452,7 @@ class TestBoundMethodWrapper:
 
         # Assert
         assert result == "bound_result"
-        mock_cacheable_wrapper.assert_called_once_with(instance, 5, key="value")
+        mock_cacheable_wrapper._async_call.assert_called_once_with(instance, 5, key="value")
 
     def test_bound_method_wrapper_call_sync_context(self) -> None:
         """Test bound method call in sync context."""
@@ -567,8 +569,8 @@ class TestBoundMethodWrapper:
 class TestCacheableDecorator:
     """Test @cacheable decorator functionality."""
 
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_service")
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_orchestrator")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_cacheable_decorator_minimal_parameters(
         self, mock_create_orchestrator: Mock, mock_create_service: Mock
     ) -> None:
@@ -591,8 +593,8 @@ class TestCacheableDecorator:
         mock_create_service.assert_called_once()
         mock_create_orchestrator.assert_called_once_with(cache_service=mock_service, enable_deduplication=True)
 
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_service")
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_orchestrator")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_cacheable_decorator_all_parameters(
         self, mock_create_orchestrator: Mock, mock_create_service: Mock
     ) -> None:
@@ -647,8 +649,8 @@ class TestCacheableDecorator:
         )
 
     @patch.dict(os.environ, {"DAPR_CACHE_DEFAULT_STORE_NAME": "env-store"})
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_service")
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_orchestrator")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_cacheable_decorator_environment_variable_resolution(
         self, mock_create_orchestrator: Mock, mock_create_service: Mock
     ) -> None:
@@ -682,7 +684,7 @@ class TestCacheableDecorator:
         with pytest.raises(ValueError, match="store_name cannot be empty"):
             cacheable(store_name="")(test_func)
 
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_service")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
     def test_cacheable_decorator_service_creation_error(self, mock_create_service: Mock) -> None:
         """Test @cacheable decorator when service creation fails."""
         # Arrange
@@ -699,8 +701,8 @@ class TestCacheableDecorator:
 class TestIntegrationScenarios:
     """Integration tests for decorator usage scenarios."""
 
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_service")
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_orchestrator")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_function_decoration_and_metadata_preservation(
         self, mock_create_orchestrator: Mock, mock_create_service: Mock
     ) -> None:
@@ -723,8 +725,8 @@ class TestIntegrationScenarios:
         assert decorated_func.__doc__ == "Original function docstring."
         assert decorated_func.__module__ == original_function.__module__
 
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_service")
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_orchestrator")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_method_decoration_descriptor_protocol(
         self, mock_create_orchestrator: Mock, mock_create_service: Mock
     ) -> None:
@@ -753,8 +755,8 @@ class TestIntegrationScenarios:
         assert isinstance(bound, BoundMethodWrapper)
         assert bound._instance is instance
 
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_service")
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_orchestrator")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_static_method_decoration(self, mock_create_orchestrator: Mock, mock_create_service: Mock) -> None:
         """Test static method decoration."""
         # Arrange
@@ -775,8 +777,8 @@ class TestIntegrationScenarios:
         # Assert
         assert isinstance(static_method, CacheableWrapper)
 
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_service")
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_orchestrator")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_class_method_decoration(self, mock_create_orchestrator: Mock, mock_create_service: Mock) -> None:
         """Test class method decoration."""
         # Arrange
@@ -802,8 +804,8 @@ class TestIntegrationScenarios:
 class TestErrorHandling:
     """Test error handling scenarios."""
 
-    @patch("dapr_state_cache.decorators.cacheable.logger")
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_service")
+    @patch("dapr_state_cache.decorators.cacheable_factory.logger")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
     def test_decorator_logs_errors_during_creation(self, mock_create_service: Mock, mock_logger: Mock) -> None:
         """Test that decorator logs errors during wrapper creation."""
         # Arrange
@@ -819,9 +821,9 @@ class TestErrorHandling:
         # Verify logging
         mock_logger.error.assert_called_once()
 
-    @patch("dapr_state_cache.decorators.cacheable.logger")
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_service")
-    @patch("dapr_state_cache.decorators.cacheable.create_cache_orchestrator")
+    @patch("dapr_state_cache.decorators.cacheable_factory.logger")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_service")
+    @patch("dapr_state_cache.decorators.component_builder.create_cache_orchestrator")
     def test_decorator_logs_successful_creation(
         self, mock_create_orchestrator: Mock, mock_create_service: Mock, mock_logger: Mock
     ) -> None:
@@ -842,5 +844,5 @@ class TestErrorHandling:
         assert isinstance(decorated_func, CacheableWrapper)
 
         # Verify logging
-        mock_logger.debug.assert_any_call("Applying @cacheable decorator to function test_func")
+        mock_logger.debug.assert_any_call("Creating cacheable wrapper for function test_func")
         mock_logger.debug.assert_any_call("Successfully created cacheable wrapper for test_func")

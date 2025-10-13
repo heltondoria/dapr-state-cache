@@ -75,6 +75,7 @@ def reset_global_state():
 
     # Reset the default bridge
     import contextlib
+
     from src.dapr_state_cache.core.sync_async_bridge import _reset_default_bridge
 
     # Function might not exist yet during test initialization, safe to ignore

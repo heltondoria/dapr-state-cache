@@ -15,16 +15,90 @@ import logging
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-from ..core import CacheOrchestrator, CacheService, SyncAsyncBridge, create_cache_orchestrator, create_cache_service
+from ..core import CacheOrchestrator, CacheService, SyncAsyncBridge
 from ..protocols import KeyBuilder, ObservabilityHooks, Serializer
-from .config import CacheConfig
 
 logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-class CacheableWrapper:
+class InvalidationMethods:
+    """Mixin providing cache invalidation methods."""
+
+    def __init__(self) -> None:
+        # Initialize only if not already set by parent class
+        if not hasattr(self, "_orchestrator"):
+            self._orchestrator: CacheOrchestrator = None  # type: ignore
+        if not hasattr(self, "_bridge"):
+            self._bridge: SyncAsyncBridge = None  # type: ignore
+        if not hasattr(self, "_func"):
+            self._func: Callable = None  # type: ignore
+
+    async def invalidate(self, *args: Any, **kwargs: Any) -> bool:
+        """Invalidate cache entry for specific arguments (async).
+
+        Args:
+            *args: Function arguments
+            **kwargs: Function keyword arguments
+
+        Returns:
+            True if invalidation succeeded, False otherwise
+        """
+        return await self._orchestrator.invalidate_cache(self._func, args, kwargs)
+
+    async def invalidate_prefix(self, prefix: str) -> bool:
+        """Invalidate cache entries by prefix (async).
+
+        Args:
+            prefix: Cache key prefix to invalidate
+
+        Returns:
+            True if invalidation succeeded, False otherwise
+        """
+        return await self._orchestrator.invalidate_cache_prefix(prefix)
+
+    def invalidate_sync(self, *args: Any, **kwargs: Any) -> bool:
+        """Invalidate cache entry for specific arguments (sync).
+
+        Args:
+            *args: Function arguments
+            **kwargs: Function keyword arguments
+
+        Returns:
+            True if invalidation succeeded, False otherwise
+        """
+        return self._bridge.execute_auto_sync(self.invalidate, *args, **kwargs)
+
+    def invalidate_prefix_sync(self, prefix: str) -> bool:
+        """Invalidate cache entries by prefix (sync).
+
+        Args:
+            prefix: Cache key prefix to invalidate
+
+        Returns:
+            True if invalidation succeeded, False otherwise
+        """
+        return self._bridge.execute_auto_sync(self.invalidate_prefix, prefix)
+
+
+class DescriptorProtocolMixin:
+    """Mixin providing descriptor protocol support."""
+
+    def __init__(self) -> None:
+        # Initialize only if not already set by parent class
+        if not hasattr(self, "_owner_class"):
+            self._owner_class: type | None = None
+        if not hasattr(self, "_instance_bound"):
+            self._instance_bound = False
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        """Set name when used as class attribute (descriptor protocol)."""
+        self._owner_class = owner
+        self.__name__ = name
+
+
+class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
     """Wrapper for cached functions with full feature support.
 
     This class wraps functions decorated with @cacheable and provides transparent
@@ -75,7 +149,7 @@ class CacheableWrapper:
         condition: Callable[..., bool] | None,
         bypass: Callable[..., bool] | None,
     ) -> None:
-        """Initialize cacheable wrapper.
+        """Initialize cacheable wrapper following Clean Code principles.
 
         Args:
             func: Original function to wrap
@@ -85,6 +159,24 @@ class CacheableWrapper:
             condition: Condition for caching
             bypass: Condition for bypassing cache
         """
+        self._initialize_core_attributes(func, orchestrator, bridge, ttl_seconds, condition, bypass)
+        self._copy_function_metadata(func)
+        self._setup_mixins()
+
+    def _initialize_core_attributes(
+        self,
+        func: Callable,
+        orchestrator: CacheOrchestrator,
+        bridge: SyncAsyncBridge,
+        ttl_seconds: int | None,
+        condition: Callable[..., bool] | None,
+        bypass: Callable[..., bool] | None,
+    ) -> None:
+        """Initialize core wrapper attributes.
+
+        Single responsibility: Set primary instance attributes
+        following dependency injection principles.
+        """
         self._func = func
         self._orchestrator = orchestrator
         self._bridge = bridge
@@ -92,23 +184,28 @@ class CacheableWrapper:
         self._condition = condition
         self._bypass = bypass
 
-        # Copy function metadata
+    def _setup_mixins(self) -> None:
+        """Initialize mixin classes after core attributes are set.
+
+        Single responsibility: Proper mixin initialization order
+        ensuring attributes are available for mixin constructors.
+        """
+        InvalidationMethods.__init__(self)
+        DescriptorProtocolMixin.__init__(self)
+
+    def _copy_function_metadata(self, func: Callable) -> None:
+        """Copy metadata from original function to wrapper.
+
+        Args:
+            func: Original function to copy metadata from
+        """
         self.__name__ = getattr(func, "__name__", "wrapped_function")
         self.__doc__ = getattr(func, "__doc__", None)
         self.__module__ = getattr(func, "__module__", "<unknown>")
-        self.__qualname__ = getattr(func, "__qualname__", None)
+        self.__qualname__ = getattr(func, "__qualname__", "wrapped_function")
         self.__annotations__ = getattr(func, "__annotations__", {})
 
-        # Descriptor protocol support
-        self._owner_class: type | None = None
-        self._instance_bound = False
-
-    def __set_name__(self, owner: type, name: str) -> None:
-        """Set name when used as class attribute (descriptor protocol)."""
-        self._owner_class = owner
-        self.__name__ = name
-
-    def __get__(self, instance: Any, owner: type | None = None) -> Callable:
+    def __get__(self, instance: Any, owner: type | None = None) -> "CacheableWrapper | BoundMethodWrapper":
         """Descriptor protocol: return bound method or unbound function."""
         if instance is None:
             # Accessed on class - return unbound wrapper
@@ -117,7 +214,23 @@ class CacheableWrapper:
         # Accessed on instance - return bound method wrapper
         return BoundMethodWrapper(instance=instance, cacheable_wrapper=self)
 
-    async def __call__(self, *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """Execute the cached function with automatic sync/async detection."""
+        # Detect if we're in async context
+        try:
+            asyncio.get_running_loop()
+            is_async_context = True
+        except RuntimeError:
+            is_async_context = False
+
+        if is_async_context:
+            # In async context - return coroutine
+            return self._async_call(*args, **kwargs)
+        else:
+            # In sync context - execute synchronously
+            return self.__call_sync__(*args, **kwargs)
+
+    async def _async_call(self, *args: Any, **kwargs: Any) -> Any:
         """Execute the cached function (async version)."""
         return await self._orchestrator.execute_with_cache(
             func=self._func,
@@ -132,58 +245,10 @@ class CacheableWrapper:
         """Execute the cached function (sync version)."""
         if inspect.iscoroutinefunction(self._func):
             # Async function called from sync context
-            return self._bridge.run_async_in_sync(self.__call__, *args, **kwargs)
+            return self._bridge.run_async_in_sync(self._async_call, *args, **kwargs)
         else:
-            # Sync function - use bridge to handle properly
-            return self._bridge.execute_auto_sync(self.__call__, *args, **kwargs)
-
-    # Invalidation methods (async)
-    async def invalidate(self, *args: Any, **kwargs: Any) -> bool:
-        """Invalidate cache entry for specific arguments (async).
-
-        Args:
-            *args: Function arguments
-            **kwargs: Function keyword arguments
-
-        Returns:
-            True if invalidation succeeded, False otherwise
-        """
-        return await self._orchestrator.invalidate_cache(self._func, args, kwargs)
-
-    async def invalidate_prefix(self, prefix: str) -> bool:
-        """Invalidate cache entries by prefix (async).
-
-        Args:
-            prefix: Cache key prefix to invalidate
-
-        Returns:
-            True if invalidation succeeded, False otherwise
-        """
-        return await self._orchestrator.invalidate_cache_prefix(prefix)
-
-    # Invalidation methods (sync)
-    def invalidate_sync(self, *args: Any, **kwargs: Any) -> bool:
-        """Invalidate cache entry for specific arguments (sync).
-
-        Args:
-            *args: Function arguments
-            **kwargs: Function keyword arguments
-
-        Returns:
-            True if invalidation succeeded, False otherwise
-        """
-        return self._bridge.execute_auto_sync(self.invalidate, *args, **kwargs)
-
-    def invalidate_prefix_sync(self, prefix: str) -> bool:
-        """Invalidate cache entries by prefix (sync).
-
-        Args:
-            prefix: Cache key prefix to invalidate
-
-        Returns:
-            True if invalidation succeeded, False otherwise
-        """
-        return self._bridge.execute_auto_sync(self.invalidate_prefix, prefix)
+            # Sync function - execute through orchestrator using bridge
+            return self._bridge.run_async_in_sync(self._async_call, *args, **kwargs)
 
     @property
     def cache_service(self) -> CacheService:
@@ -228,11 +293,11 @@ class BoundMethodWrapper:
             is_async_context = False
 
         # Include instance in args for function execution
-        full_args = (self._instance,) + args
+        full_args = (self._instance, *args)
 
         if is_async_context:
             # In async context - return coroutine
-            return self._wrapper(*full_args, **kwargs)
+            return self._wrapper._async_call(*full_args, **kwargs)
         else:
             # In sync context - execute synchronously
             return self._wrapper.__call_sync__(*full_args, **kwargs)
@@ -240,12 +305,12 @@ class BoundMethodWrapper:
     # Delegate invalidation methods
     async def invalidate(self, *args: Any, **kwargs: Any) -> bool:
         """Invalidate cache for this method with instance context."""
-        full_args = (self._instance,) + args
+        full_args = (self._instance, *args)
         return await self._wrapper.invalidate(*full_args, **kwargs)
 
     def invalidate_sync(self, *args: Any, **kwargs: Any) -> bool:
         """Invalidate cache for this method with instance context (sync)."""
-        full_args = (self._instance,) + args
+        full_args = (self._instance, *args)
         return self._wrapper.invalidate_sync(*full_args, **kwargs)
 
     async def invalidate_prefix(self, prefix: str) -> bool:
@@ -278,17 +343,12 @@ def cacheable(
     condition: Callable[..., bool] | None = None,
     bypass: Callable[..., bool] | None = None,
     hooks: ObservabilityHooks | None = None,
-) -> Callable[[F], CacheableWrapper | F]:
+) -> Callable[[Any], CacheableWrapper]:
     """Decorator for adding transparent caching to functions and methods.
 
     This decorator provides comprehensive caching functionality with support for:
-    - Sync and async functions
-    - Instance, class, and static methods
-    - Configurable TTL and conditions
-    - Multiple serialization formats
-    - Optional Dapr cryptography
-    - Observability hooks
-    - Cache invalidation methods
+    - Sync and async functions, configurable TTL and conditions, multiple serialization formats
+    - Optional Dapr cryptography, observability hooks, and cache invalidation methods
 
     Args:
         store_name: Dapr state store name (default from env or "cache")
@@ -305,71 +365,23 @@ def cacheable(
     Returns:
         Decorated function with caching capabilities
 
-    Raises:
-        ValueError: If configuration parameters are invalid
-
     Example:
         >>> @cacheable(store_name="users", ttl_seconds=300)
         ... def get_user(user_id: int) -> dict:
         ...     return fetch_user_from_db(user_id)
-
-        >>> # Cache can be invalidated
-        >>> get_user.invalidate_sync(123)
-        >>> get_user.invalidate_prefix_sync("cache:get_user")
     """
+    from .cacheable_factory import CacheDecoratorFactory
 
-    def decorator(func: F) -> CacheableWrapper | F:
-        logger.debug(f"Applying @cacheable decorator to function {func.__name__}")
-
-        try:
-            # Resolve configuration with environment variable support
-            resolved_store_name = CacheConfig.resolve_store_name(store_name)
-            resolved_ttl = CacheConfig.resolve_ttl_seconds(ttl_seconds) if ttl_seconds is None else ttl_seconds
-            resolved_crypto_name = (
-                CacheConfig.resolve_crypto_component_name(crypto_component_name) if use_dapr_crypto else None
-            )
-
-            # Validate parameters
-            CacheConfig.validate_parameters(
-                store_name=resolved_store_name,
-                ttl_seconds=resolved_ttl,
-                key_prefix=key_prefix,
-                use_dapr_crypto=use_dapr_crypto,
-                crypto_component_name=resolved_crypto_name,
-            )
-
-            # Create cache service
-            cache_service = create_cache_service(
-                store_name=resolved_store_name,
-                key_prefix=key_prefix,
-                serializer=serializer,
-                key_builder=key_builder,
-                use_dapr_crypto=use_dapr_crypto,
-                crypto_component_name=resolved_crypto_name,
-                hooks=hooks,
-            )
-
-            # Create orchestrator
-            orchestrator = create_cache_orchestrator(cache_service=cache_service, enable_deduplication=True)
-
-            # Create sync/async bridge
-            bridge = SyncAsyncBridge()
-
-            # Create wrapper
-            wrapper = CacheableWrapper(
-                func=func,
-                orchestrator=orchestrator,
-                bridge=bridge,
-                ttl_seconds=resolved_ttl,
-                condition=condition,
-                bypass=bypass,
-            )
-
-            logger.debug(f"Successfully created cacheable wrapper for {func.__name__}")
-            return wrapper
-
-        except Exception as e:
-            logger.error(f"Failed to create cacheable wrapper for {func.__name__}: {e}")
-            raise
-
-    return decorator
+    factory = CacheDecoratorFactory()
+    return factory.create_decorator(
+        store_name=store_name,
+        ttl_seconds=ttl_seconds,
+        key_prefix=key_prefix,
+        key_builder=key_builder,
+        serializer=serializer,
+        use_dapr_crypto=use_dapr_crypto,
+        crypto_component_name=crypto_component_name,
+        condition=condition,
+        bypass=bypass,
+        hooks=hooks,
+    )

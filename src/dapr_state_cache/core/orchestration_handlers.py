@@ -172,8 +172,8 @@ class CacheOrchestrationCoordinator:
         ttl_seconds: int | None,
         condition: Callable[..., bool] | None,
         bypass: Callable[..., bool] | None,
-    ) -> Any:
-        """Orchestrate complete cache operation flow.
+    ) -> tuple[bool, Any | None]:
+        """Orchestrate cache bypass and lookup flow.
 
         Args:
             func: Function to execute and cache
@@ -184,24 +184,26 @@ class CacheOrchestrationCoordinator:
             bypass: Bypass function for cache skipping
 
         Returns:
-            Function result (from cache or computation)
+            Tuple of (operation_completed, result). When operation_completed is
+            True, result contains either the bypassed execution or cached value.
+            When False, the caller must handle computation and storage.
         """
         logger.debug(f"Starting cache orchestration for function {func.__name__}")
 
         # Check bypass condition first
         if self._bypass_handler.should_bypass_cache(bypass, args, kwargs):
             logger.debug(f"Cache bypass triggered for {func.__name__}")
-            return await self._execute_function_directly(func, args, kwargs)
+            return True, await self._execute_function_directly(func, args, kwargs)
 
         # Try cache lookup
         cached_result, cache_hit = await self._lookup_handler.try_cache_lookup(func, args, kwargs)
         if cache_hit:
             logger.debug(f"Cache hit for function {func.__name__}")
-            return cached_result
+            return True, cached_result
 
         # Cache miss - compute and cache result
         logger.debug(f"Cache miss for function {func.__name__}, starting computation")
-        return await self._computation_handler.compute_and_cache_result(func, args, kwargs, ttl_seconds, condition)
+        return False, None
 
     async def _execute_function_directly(self, func: Callable, args: tuple, kwargs: dict) -> Any:
         """Execute function directly without caching."""

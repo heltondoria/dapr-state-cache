@@ -15,7 +15,7 @@ from ..codecs.json_serializer import JsonSerializer
 from ..keys.default_key_builder import DefaultKeyBuilder
 from ..protocols import KeyBuilder, ObservabilityHooks, Serializer
 from .cache_operations import CacheGetOperationHandler, CacheHealthChecker, CacheSetOperationHandler
-from .constants import DEFAULT_KEY_PREFIX
+from .constants import DEFAULT_KEY_PREFIX, DEFAULT_TTL_SECONDS
 from .crypto_integration import CryptoIntegration, NoOpCryptoIntegration, create_crypto_integration
 
 logger = logging.getLogger(__name__)
@@ -255,7 +255,8 @@ class CacheService:
             args: Function arguments
             kwargs: Function keyword arguments
             value: Value to cache
-            ttl_seconds: TTL in seconds (None uses default)
+            ttl_seconds: TTL in seconds (``None`` falls back to
+                :data:`DEFAULT_TTL_SECONDS`)
 
         Returns:
             True if successfully cached, False if error occurred
@@ -267,8 +268,11 @@ class CacheService:
             if prepared_data is None:
                 return False
 
-            # Use ttl_seconds directly (None uses backend default)
-            await self._backend.set(cache_key, prepared_data, ttl_seconds)
+            # Apply default TTL when not provided to maintain backward compatibility
+            effective_ttl = ttl_seconds if ttl_seconds is not None else DEFAULT_TTL_SECONDS
+            self.validate_ttl(effective_ttl)
+
+            await self._backend.set(cache_key, prepared_data, effective_ttl)
 
             self._set_handler.record_cache_write(cache_key, len(prepared_data))
             return True

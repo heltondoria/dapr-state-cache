@@ -11,8 +11,11 @@ import os
 class CacheConfig:
     """Configuration manager for cache decorator.
 
+
     Handles environment variable resolution and default value management
     following the precedence rules defined in the specification:
+
+    1. Explicit decorator parameter (highest precedence)
 
     1. Explicit decorator parameter (highest precedence)
     2. Environment variable
@@ -23,6 +26,7 @@ class CacheConfig:
     ENV_DEFAULT_STORE_NAME = "DAPR_CACHE_DEFAULT_STORE_NAME"
     ENV_DEFAULT_CRYPTO_NAME = "DAPR_CACHE_DEFAULT_CRYPTO_NAME"
 
+
     # Default values
     DEFAULT_STORE_NAME = "cache"
     DEFAULT_TTL_SECONDS = 3600
@@ -31,10 +35,13 @@ class CacheConfig:
 
     @classmethod
     def resolve_store_name(cls, explicit_value: str | None = None) -> str:
+    def resolve_store_name(cls, explicit_value: str | None = None) -> str:
         """Resolve store name following precedence rules.
+
 
         Args:
             explicit_value: Explicit store name from decorator parameter
+
 
         Returns:
             Resolved store name
@@ -42,18 +49,23 @@ class CacheConfig:
         if explicit_value is not None:
             return explicit_value
 
+
         env_value = os.getenv(cls.ENV_DEFAULT_STORE_NAME)
         if env_value:
             return env_value
+
 
         return cls.DEFAULT_STORE_NAME
 
     @classmethod
     def resolve_crypto_component_name(cls, explicit_value: str | None = None) -> str:
+    def resolve_crypto_component_name(cls, explicit_value: str | None = None) -> str:
         """Resolve crypto component name following precedence rules.
+
 
         Args:
             explicit_value: Explicit component name from decorator parameter
+
 
         Returns:
             Resolved crypto component name
@@ -61,24 +73,30 @@ class CacheConfig:
         if explicit_value is not None:
             return explicit_value
 
+
         env_value = os.getenv(cls.ENV_DEFAULT_CRYPTO_NAME)
         if env_value:
             return env_value
+
 
         return cls.DEFAULT_CRYPTO_COMPONENT_NAME
 
     @classmethod
     def resolve_ttl_seconds(cls, explicit_value: int | None = None) -> int:
+    def resolve_ttl_seconds(cls, explicit_value: int | None = None) -> int:
         """Resolve TTL seconds with default fallback.
+
 
         Args:
             explicit_value: Explicit TTL from decorator parameter
+
 
         Returns:
             Resolved TTL in seconds
         """
         if explicit_value is not None:
             return explicit_value
+
 
         return cls.DEFAULT_TTL_SECONDS
 
@@ -87,11 +105,14 @@ class CacheConfig:
         cls,
         store_name: str,
         ttl_seconds: int | None,
+        ttl_seconds: int | None,
         key_prefix: str,
         use_dapr_crypto: bool,
         crypto_component_name: str | None,
+        crypto_component_name: str | None,
     ) -> None:
         """Validate cache configuration parameters.
+
 
         Args:
             store_name: Dapr state store name
@@ -99,6 +120,7 @@ class CacheConfig:
             key_prefix: Cache key prefix
             use_dapr_crypto: Whether to use Dapr cryptography
             crypto_component_name: Crypto component name
+
 
         Raises:
             ValueError: If any parameter is invalid
@@ -159,4 +181,5 @@ class CacheConfig:
             ValueError: If crypto configuration is invalid
         """
         if use_dapr_crypto and not crypto_component_name:
+            raise ValueError("crypto_component_name is required when use_dapr_crypto=True")
             raise ValueError("crypto_component_name is required when use_dapr_crypto=True")

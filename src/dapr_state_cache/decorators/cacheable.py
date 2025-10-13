@@ -4,6 +4,7 @@ Main cacheable decorator implementation.
 Provides the @cacheable decorator with full feature support including:
 - 10 configurable parameters
 - Sync/async function support
+- Sync/async function support
 - Descriptor protocol for method support
 - Invalidation methods
 - Environment variable configuration
@@ -20,6 +21,7 @@ from ..protocols import KeyBuilder, ObservabilityHooks, Serializer
 
 logger = logging.getLogger(__name__)
 
+F = TypeVar("F", bound=Callable[..., Any])
 F = TypeVar("F", bound=Callable[..., Any])
 
 
@@ -101,10 +103,13 @@ class DescriptorProtocolMixin:
 class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
     """Wrapper for cached functions with full feature support.
 
+
     This class wraps functions decorated with @cacheable and provides transparent
+    caching functionality. It implements the descriptor protocol to support
     caching functionality. It implements the descriptor protocol to support
     instance methods, class methods, and static methods while preserving proper
     binding semantics.
+
 
     Key Features:
         - Transparent caching for sync/async functions
@@ -115,10 +120,12 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
         - Preserved function metadata and annotations
         - Integration with CacheOrchestrator for orchestration
 
+
     The wrapper automatically detects function types (sync/async) and handles
     execution context appropriately using SyncAsyncBridge. Cache keys are
     generated deterministically, excluding 'self' and 'cls' parameters to
     enable cache sharing between instances of the same class.
+
 
     Example:
         ```python
@@ -126,12 +133,15 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
         def get_user(user_id: int) -> dict:
             return fetch_user_from_database(user_id)
 
+
         # Cache can be invalidated
         get_user.invalidate_sync(123)
         ```
 
+
     Attributes:
         _func: The original wrapped function
+        _orchestrator: Cache orchestrator for cache operations
         _orchestrator: Cache orchestrator for cache operations
         _bridge: Sync/async bridge for context handling
         _ttl_seconds: Default TTL for cache entries (None uses backend default)
@@ -145,6 +155,9 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
         func: Callable,
         orchestrator: CacheOrchestrator,
         bridge: SyncAsyncBridge,
+        ttl_seconds: int | None,
+        condition: Callable[..., bool] | None,
+        bypass: Callable[..., bool] | None,
         ttl_seconds: int | None,
         condition: Callable[..., bool] | None,
         bypass: Callable[..., bool] | None,
@@ -211,6 +224,7 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
             # Accessed on class - return unbound wrapper
             return self
 
+
         # Accessed on instance - return bound method wrapper
         return BoundMethodWrapper(instance=instance, cacheable_wrapper=self)
 
@@ -239,6 +253,7 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
             ttl_seconds=self._ttl_seconds,
             condition=self._condition,
             bypass=self._bypass,
+            bypass=self._bypass,
         )
 
     def __call_sync__(self, *args: Any, **kwargs: Any) -> Any:
@@ -250,6 +265,7 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
             # Sync function - execute through orchestrator using bridge
             return self._bridge.run_async_in_sync(self._async_call, *args, **kwargs)
 
+    @property
     @property
     def cache_service(self) -> CacheService:
         """Get the underlying cache service."""
@@ -264,6 +280,7 @@ class CacheableWrapper(InvalidationMethods, DescriptorProtocolMixin):
 class BoundMethodWrapper:
     """Wrapper for bound methods that handles instance context.
 
+
     This wrapper is created when a decorated method is accessed on an instance.
     It automatically filters out 'self' or 'cls' from cache key generation
     to enable cache sharing between instances.
@@ -272,12 +289,14 @@ class BoundMethodWrapper:
     def __init__(self, instance: Any, cacheable_wrapper: CacheableWrapper) -> None:
         """Initialize bound method wrapper.
 
+
         Args:
             instance: Instance the method is bound to
             cacheable_wrapper: Original cacheable wrapper
         """
         self._instance = instance
         self._wrapper = cacheable_wrapper
+
 
         # Copy attributes for transparent access
         self.__name__ = cacheable_wrapper.__name__
@@ -335,7 +354,11 @@ class BoundMethodWrapper:
 def cacheable(
     store_name: str | None = None,
     ttl_seconds: int | None = None,
+    store_name: str | None = None,
+    ttl_seconds: int | None = None,
     key_prefix: str = "cache",
+    key_builder: KeyBuilder | None = None,
+    serializer: Serializer | None = None,
     key_builder: KeyBuilder | None = None,
     serializer: Serializer | None = None,
     use_dapr_crypto: bool = False,
@@ -345,6 +368,7 @@ def cacheable(
     hooks: ObservabilityHooks | None = None,
 ) -> Callable[[Any], CacheableWrapper]:
     """Decorator for adding transparent caching to functions and methods.
+
 
     This decorator provides comprehensive caching functionality with support for:
     - Sync and async functions, configurable TTL and conditions, multiple serialization formats
@@ -361,6 +385,7 @@ def cacheable(
         condition: Function to determine if result should be cached
         bypass: Function to determine if cache should be bypassed
         hooks: Observability hooks for metrics/logging
+
 
     Returns:
         Decorated function with caching capabilities

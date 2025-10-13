@@ -9,6 +9,8 @@ from .cacheable import (
     BoundMethodWrapper,
     CacheableWrapper,
     cacheable,
+    CacheableWrapper,
+    cacheable,
 )
 from .cacheable_factory import CacheDecoratorFactory
 from .component_builder import CacheComponentBuilder

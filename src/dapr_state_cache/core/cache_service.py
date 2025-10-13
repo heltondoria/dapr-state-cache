@@ -255,7 +255,8 @@ class CacheService:
             args: Function arguments
             kwargs: Function keyword arguments
             value: Value to cache
-            ttl_seconds: TTL in seconds (None uses default)
+            ttl_seconds: TTL in seconds (``None`` falls back to
+                :data:`DEFAULT_TTL_SECONDS`)
 
         Returns:
             True if successfully cached, False if error occurred

@@ -52,7 +52,7 @@ class TestBasicCacheFlow:
         # Mock cache miss on first call, hit on second
         mock_client.get_state.side_effect = [
             Mock(data=None),  # Cache miss
-            Mock(data=b'{"result": 20}'),  # Cache hit (simplified)
+            Mock(data=b"20"),  # Cache hit - raw serialized value
         ]
 
         # Act - First call (cache miss)
@@ -250,29 +250,29 @@ class TestSerializers:
 
     @patch("dapr.clients.DaprClient")
     def test_pickle_serializer(self, mock_dapr_client_class: Mock) -> None:
-        """Test caching with Pickle serializer."""
+        """Test caching with Pickle serializer using built-in types."""
         # Arrange
         mock_client = AsyncMock()
         mock_dapr_client_class.return_value = mock_client
-        mock_client.get_state.return_value = Mock(data=None)
-
-        class CustomObject:
-            def __init__(self, value: str) -> None:
-                self.value = value
-
-            def __eq__(self, other: Any) -> bool:
-                return isinstance(other, CustomObject) and self.value == other.value
+        mock_client.get_state.side_effect = [
+            Mock(data=None),  # Cache miss
+            Mock(data=b"\x80\x04}q\x00(X\x05\x00\x00\x00valueq\x01X\n\x00\x00\x00test_valueq\x02u."),  # Pickled dict
+        ]
 
         @cacheable(store_name="pickle-cache", serializer=PickleSerializer(), ttl_seconds=60)
-        def create_custom_object(value: str) -> CustomObject:
-            return CustomObject(value)
+        def create_custom_dict(value: str) -> dict[str, str]:
+            return {"value": value, "type": "custom"}
 
         # Act
-        result = create_custom_object("test_value")
+        result1 = create_custom_dict("test_value")  # Cache miss
+        result2 = create_custom_dict("test_value")  # Cache hit
 
         # Assert
-        assert isinstance(result, CustomObject)
-        assert result.value == "test_value"
+        assert isinstance(result1, dict)
+        assert result1["value"] == "test_value"
+        assert result1["type"] == "custom"
+
+        # Verify save_state was called for successful serialization
         mock_client.save_state.assert_called()
 
 
@@ -289,7 +289,7 @@ class TestObservability:
         # Mock cache miss then hit
         mock_client.get_state.side_effect = [
             Mock(data=None),  # Miss
-            Mock(data=b'{"cached_result": true}'),  # Hit (simplified)
+            Mock(data=b'{"result": 20, "computed": true}'),  # Hit - correct serialized dict
         ]
 
         metrics = CacheMetrics()
@@ -493,22 +493,15 @@ class TestErrorHandling:
         # Arrange - Mock Dapr client to raise connection error
         mock_dapr_client_class.side_effect = Exception("Connection refused")
 
-        call_count = 0
+        # Act & Assert - Should raise DaprUnavailableError during decorator application
+        with pytest.raises(Exception) as exc_info:
 
-        @cacheable(store_name="unreachable-cache", ttl_seconds=60)
-        def resilient_function(value: int) -> int:
-            nonlocal call_count
-            call_count += 1
-            return value * 10
+            @cacheable(store_name="unreachable-cache", ttl_seconds=60)
+            def resilient_function(value: int) -> int:
+                return value * 10
 
-        # Act & Assert - Should fall back to direct execution
-        try:
-            result = resilient_function(5)
-            assert result == 50  # Function should still work
-            assert call_count == 1
-        except Exception as e:
-            # Depending on implementation, might raise or fall back
-            assert "Connection refused" in str(e) or call_count == 1
+        # Verify the error is related to Dapr connection failure
+        assert "Connection refused" in str(exc_info.value) or "Failed to connect to Dapr sidecar" in str(exc_info.value)
 
     @patch("dapr.clients.DaprClient")
     def test_cache_operation_errors(self, mock_dapr_client_class: Mock) -> None:

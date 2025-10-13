@@ -4,7 +4,6 @@ Additional tests for 100% coverage of decorators module.
 These tests focus on edge cases and code paths not covered by existing tests.
 """
 
-
 from dapr_state_cache.decorators.cacheable import (
     DescriptorProtocolMixin,
     InvalidationMethods,

@@ -9,23 +9,22 @@ This module provides comprehensive observability features including:
 """
 
 from .hooks import (
+    CompositeObservabilityHooks,
     DefaultObservabilityHooks,
     SilentObservabilityHooks,
-    CompositeObservabilityHooks,
 )
 from .metrics import (
-    CacheStats,
-    TopKeysResult,
     CacheMetrics,
+    CacheStats,
     MetricsCollectorHooks,
+    TopKeysResult,
 )
 
 __all__ = [
     # Hook implementations
     "DefaultObservabilityHooks",
-    "SilentObservabilityHooks", 
+    "SilentObservabilityHooks",
     "CompositeObservabilityHooks",
-    
     # Metrics
     "CacheStats",
     "TopKeysResult",

@@ -6,36 +6,34 @@ backend storage, serialization, key generation, and cryptography.
 """
 
 import logging
-from typing import Any, Optional, Union, Callable
+from collections.abc import Callable
+from typing import Any
 
 from ..backend.dapr_state_backend import DaprStateBackend
 from ..backend.exceptions import CacheKeyEmptyError, InvalidTTLValueError
-from ..protocols import KeyBuilder, Serializer, ObservabilityHooks
-from ..keys.default_key_builder import DefaultKeyBuilder
 from ..codecs.json_serializer import JsonSerializer
-from .crypto_integration import (
-    CryptoIntegration, 
-    NoOpCryptoIntegration, 
-    DaprCryptoError,
-    create_crypto_integration
-)
+from ..keys.default_key_builder import DefaultKeyBuilder
+from ..protocols import KeyBuilder, ObservabilityHooks, Serializer
+from .cache_operations import CacheGetOperationHandler, CacheHealthChecker, CacheSetOperationHandler
+from .constants import DEFAULT_KEY_PREFIX, DEFAULT_TTL_SECONDS
+from .crypto_integration import CryptoIntegration, NoOpCryptoIntegration, create_crypto_integration
 
 logger = logging.getLogger(__name__)
 
 
 class CacheService:
     """Enterprise-grade cache service facade with comprehensive integration.
-    
+
     High-level cache service that orchestrates all caching components into
     a unified, production-ready system. This facade implements the Service
     Layer pattern, providing a clean abstraction over complex cache operations
     while maintaining extensibility and configurability.
-    
+
     The service acts as the central coordination point for all cache operations,
     handling the intricate details of serialization, key generation, encryption,
     error handling, and observability while presenting a simple, consistent
     interface to higher-level components.
-    
+
     Architecture Integration:
         ```
         CacheService (Facade)
@@ -45,7 +43,7 @@ class CacheService:
         ├── CryptoIntegration (Encryption)
         └── ObservabilityHooks (Monitoring)
         ```
-    
+
     Core Capabilities:
         🔄 **Unified Operations**: Single interface for get/set/invalidate
         🔧 **Component Integration**: Seamless coordination of all subsystems
@@ -54,30 +52,30 @@ class CacheService:
         📊 **Observability**: Built-in hooks for metrics and monitoring
         🎯 **Type Safety**: Full type hints and runtime validation
         ⚡ **Performance**: Optimized operation flow with minimal overhead
-    
+
     Error Handling Philosophy:
         The service implements a "best-effort" approach where cache operations
         never break application flow:
-        
+
         - **Recoverable Errors**: Logged and gracefully handled (serialization,
           encryption, temporary network issues)
         - **Irrecoverable Errors**: Logged and propagated (Dapr unavailable,
           misconfiguration)
         - **Fallback Strategy**: Operations continue without caching when possible
-    
+
     Component Pluggability:
         All major components are pluggable through dependency injection:
-        
+
         ```python
         # Custom serializer for specific data types
         custom_serializer = MyProtocolBufferSerializer()
-        
+
         # Custom key builder for specific naming strategy
         custom_keys = MyHierarchicalKeyBuilder()
-        
+
         # Custom observability integration
         custom_hooks = MyPrometheusHooks()
-        
+
         service = CacheService(
             store_name="myapp-cache",
             serializer=custom_serializer,
@@ -85,18 +83,18 @@ class CacheService:
             hooks=custom_hooks
         )
         ```
-    
+
     Performance Characteristics:
         - **Memory**: Minimal overhead, stateless operation
         - **CPU**: Dominated by serialization and hashing (typically <1ms)
         - **Network**: Single round-trip per cache operation
         - **Latency**: Sub-millisecond for cache hits, backend-dependent for misses
-    
+
     Thread Safety:
         The service is thread-safe and can be safely shared across multiple
         threads, coroutines, and concurrent operations. Internal operations
         are stateless and atomic.
-    
+
     Example Usage:
         ```python
         # Basic service setup
@@ -107,7 +105,7 @@ class CacheService:
             use_dapr_crypto=True,           # Encrypt sensitive data
             hooks=MetricsCollectorHooks()   # Automatic metrics
         )
-        
+
         # Cache operations
         async def example_operations():
             # Cache a user profile (with encryption)
@@ -119,52 +117,52 @@ class CacheService:
                 value=user_data,
                 ttl_seconds=3600
             )
-            
+
             # Retrieve from cache
             cached_user = await service.get(get_user, (123,), {})
             if cached_user:
                 print("Cache hit! User data retrieved instantly")
             else:
                 print("Cache miss - need to fetch from database")
-            
+
             # Invalidate when user updates
             await service.invalidate(get_user, (123,), {})
-            
+
             # Bulk invalidation by prefix
             await service.invalidate_prefix("users:profile:")
-        
+
         # Health monitoring
         health = await service.health_check()
         if health["service"] == "healthy":
             print("Cache service operational")
         ```
-    
+
     Integration Patterns:
         ```python
         # Pattern 1: Service Layer Integration
         class UserService:
             def __init__(self):
                 self.cache = CacheService("users")
-            
+
             async def get_user_profile(self, user_id: int):
                 # Try cache first
                 cached = await self.cache.get(self._fetch_profile, (user_id,), {})
                 if cached:
                     return cached
-                
+
                 # Cache miss - fetch and cache
                 profile = await self._fetch_profile(user_id)
                 await self.cache.set(self._fetch_profile, (user_id,), {}, profile)
                 return profile
-        
+
         # Pattern 2: Decorator Integration (via CacheOrchestrator)
         cache_service = CacheService("api-cache")
-        
+
         @cacheable(cache_service=cache_service)
         async def expensive_api_call(endpoint: str, params: dict):
             return await make_api_request(endpoint, params)
         ```
-    
+
     This service is typically used through higher-level abstractions like
     CacheOrchestrator or the @cacheable decorator, but can be used directly
     for custom caching implementations or advanced cache management scenarios.
@@ -173,15 +171,15 @@ class CacheService:
     def __init__(
         self,
         store_name: str,
-        backend: Optional[DaprStateBackend] = None,
-        serializer: Optional[Serializer] = None,
-        key_builder: Optional[KeyBuilder] = None,
-        crypto_integration: Optional[Union[CryptoIntegration, NoOpCryptoIntegration]] = None,
-        hooks: Optional[ObservabilityHooks] = None,
-        key_prefix: str = "cache"
+        backend: DaprStateBackend | None = None,
+        serializer: Serializer | None = None,
+        key_builder: KeyBuilder | None = None,
+        crypto_integration: CryptoIntegration | NoOpCryptoIntegration | None = None,
+        hooks: ObservabilityHooks | None = None,
+        key_prefix: str = DEFAULT_KEY_PREFIX,
     ) -> None:
         """Initialize cache service.
-        
+
         Args:
             store_name: Dapr state store name
             backend: Backend storage implementation (creates default if None)
@@ -193,166 +191,104 @@ class CacheService:
         """
         self._store_name = store_name
         self._key_prefix = key_prefix
-        
+
         # Initialize components with defaults
         self._backend = backend or DaprStateBackend(store_name)
         self._serializer = serializer or JsonSerializer()
         self._key_builder = key_builder or DefaultKeyBuilder()
         self._crypto = crypto_integration or NoOpCryptoIntegration()
         self._hooks = hooks
-        
-        logger.debug(
-            f"Initialized CacheService for store '{store_name}' with prefix '{key_prefix}'"
-        )
 
-    async def get(self, func: Callable, args: tuple, kwargs: dict) -> Optional[Any]:
+        # Initialize operation handlers
+        self._get_handler = CacheGetOperationHandler(self._serializer, self._crypto, self._hooks)
+        self._set_handler = CacheSetOperationHandler(self._serializer, self._crypto, self._hooks)
+        self._health_checker = CacheHealthChecker(self._store_name, self._key_prefix, self._serializer, self._crypto)
+
+        logger.debug(f"Initialized CacheService for store '{store_name}' with prefix '{key_prefix}'")
+
+    async def get(self, func: Callable, args: tuple, kwargs: dict) -> Any | None:
         """Get value from cache.
-        
+
         Args:
             func: Function for key generation
             args: Function arguments
             kwargs: Function keyword arguments
-            
+
         Returns:
             Cached value if found, None if cache miss or error
         """
         import time
+
         start_time = time.time()
-        
+
         try:
-            # Generate cache key
             cache_key = self._build_cache_key(func, args, kwargs)
-            
-            # Get serialized data from backend
             serialized_data = await self._backend.get(cache_key)
+
             if serialized_data is None:
+                # Cache miss - record metrics
                 latency = time.time() - start_time
                 if self._hooks:
                     self._hooks.on_cache_miss(cache_key, latency)
                 return None
-            
-            # Decrypt data if crypto is enabled
-            try:
-                decrypted_data = await self._crypto.decrypt(serialized_data)
-            except DaprCryptoError as e:
-                logger.error(f"Decryption failed for key '{cache_key}': {e}")
-                if self._hooks:
-                    self._hooks.on_cache_error(cache_key, e)
-                # Treat decryption failure as cache miss
-                latency = time.time() - start_time
-                if self._hooks:
-                    self._hooks.on_cache_miss(cache_key, latency)
-                return None
-            
-            # Deserialize data
-            try:
-                value = self._serializer.deserialize(decrypted_data)
-                latency = time.time() - start_time
-                if self._hooks:
-                    self._hooks.on_cache_hit(cache_key, latency)
-                return value
-            except Exception as e:
-                logger.error(f"Deserialization failed for key '{cache_key}': {e}")
-                if self._hooks:
-                    self._hooks.on_cache_error(cache_key, e)
-                # Treat deserialization failure as cache miss
-                latency = time.time() - start_time
-                if self._hooks:
-                    self._hooks.on_cache_miss(cache_key, latency)
-                return None
-                
+
+            return await self._get_handler.handle_get_operation(cache_key, serialized_data)
+
         except Exception as e:
             logger.error(f"Cache get operation failed: {e}")
-            if hasattr(self, '_hooks') and self._hooks:
-                try:
-                    cache_key = self._build_cache_key(func, args, kwargs)
-                    self._hooks.on_cache_error(cache_key, e)
-                except Exception:
-                    # Don't let hook errors break the operation
-                    pass
-            latency = time.time() - start_time
-            if hasattr(self, '_hooks') and self._hooks:
-                try:
-                    self._hooks.on_cache_miss("unknown", latency)
-                except Exception:
-                    pass
+            # Record cache miss for any error
+            try:
+                cache_key = self._build_cache_key(func, args, kwargs)
+                latency = time.time() - start_time
+                if self._hooks:
+                    self._hooks.on_cache_miss(cache_key, latency)
+            except Exception as hook_error:
+                # Log hook failures but don't propagate to preserve cache semantics
+                logger.warning(f"Failed to record cache miss metrics: {hook_error}")
             return None
 
-    async def set(
-        self, 
-        func: Callable, 
-        args: tuple, 
-        kwargs: dict, 
-        value: Any, 
-        ttl_seconds: Optional[int] = None
-    ) -> bool:
+    async def set(self, func: Callable, args: tuple, kwargs: dict, value: Any, ttl_seconds: int | None = None) -> bool:
         """Set value in cache.
-        
+
         Args:
             func: Function for key generation
             args: Function arguments
             kwargs: Function keyword arguments
             value: Value to cache
-            ttl_seconds: TTL in seconds (None uses backend default)
-            
+            ttl_seconds: TTL in seconds (``None`` falls back to
+                :data:`DEFAULT_TTL_SECONDS`)
+
         Returns:
             True if successfully cached, False if error occurred
         """
         try:
-            # Generate cache key
             cache_key = self._build_cache_key(func, args, kwargs)
-            
-            # Serialize value
-            try:
-                serialized_data = self._serializer.serialize(value)
-            except Exception as e:
-                logger.error(f"Serialization failed for key '{cache_key}': {e}")
-                if self._hooks:
-                    self._hooks.on_cache_error(cache_key, e)
+            prepared_data = await self._set_handler.prepare_data_for_storage(cache_key, value)
+
+            if prepared_data is None:
                 return False
-            
-            # Encrypt data if crypto is enabled
-            try:
-                encrypted_data = await self._crypto.encrypt(serialized_data)
-            except DaprCryptoError as e:
-                logger.warning(
-                    f"Encryption failed for key '{cache_key}': {e}. "
-                    "Storing data in plaintext."
-                )
-                if self._hooks:
-                    self._hooks.on_cache_error(cache_key, e)
-                # Continue with plaintext data
-                encrypted_data = serialized_data
-            
-            # Store in backend with resolved TTL
-            resolved_ttl = ttl_seconds if ttl_seconds is not None else 3600
-            await self._backend.set(cache_key, encrypted_data, resolved_ttl)
-            
-            # Record metrics
-            if self._hooks:
-                self._hooks.on_cache_write(cache_key, len(encrypted_data))
-            
+
+            # Apply default TTL when not provided to maintain backward compatibility
+            effective_ttl = ttl_seconds if ttl_seconds is not None else DEFAULT_TTL_SECONDS
+            self.validate_ttl(effective_ttl)
+
+            await self._backend.set(cache_key, prepared_data, effective_ttl)
+
+            self._set_handler.record_cache_write(cache_key, len(prepared_data))
             return True
-            
+
         except Exception as e:
             logger.error(f"Cache set operation failed: {e}")
-            try:
-                cache_key = self._build_cache_key(func, args, kwargs)
-                if self._hooks:
-                    self._hooks.on_cache_error(cache_key, e)
-            except Exception:
-                # Don't let key generation or hook errors break the operation
-                pass
             return False
 
     async def invalidate(self, func: Callable, args: tuple, kwargs: dict) -> bool:
         """Invalidate specific cache entry.
-        
+
         Args:
             func: Function for key generation
             args: Function arguments
             kwargs: Function keyword arguments
-            
+
         Returns:
             True if successfully invalidated, False if error occurred
         """
@@ -367,17 +303,17 @@ class CacheService:
                 cache_key = self._build_cache_key(func, args, kwargs)
                 if self._hooks:
                     self._hooks.on_cache_error(cache_key, e)
-            except Exception:
-                # Don't let key generation or hook errors break the operation
-                pass
+            except Exception as hook_error:
+                # Log hook failures but don't propagate to preserve cache semantics
+                logger.warning(f"Failed to record cache error metrics for invalidation: {hook_error}")
             return False
 
     async def invalidate_prefix(self, prefix: str) -> bool:
         """Invalidate cache entries by prefix.
-        
+
         Args:
             prefix: Key prefix to invalidate
-            
+
         Returns:
             True if successfully invalidated, False if error occurred
         """
@@ -393,40 +329,42 @@ class CacheService:
 
     def _build_cache_key(self, func: Callable, args: tuple, kwargs: dict) -> str:
         """Build cache key using configured key builder.
-        
+
         Args:
             func: Function for key generation
             args: Function arguments
             kwargs: Function keyword arguments
-            
+
         Returns:
             Generated cache key
-            
+
         Raises:
             CacheKeyEmptyError: If generated key is empty
         """
+        from .constants import ERROR_CACHE_KEY_EMPTY
+
         try:
             key = self._key_builder.build_key(func, args, kwargs)
             if not key or not key.strip():
-                raise CacheKeyEmptyError("Generated cache key is empty")
+                raise CacheKeyEmptyError(ERROR_CACHE_KEY_EMPTY)
             return key
         except Exception as e:
             logger.error(f"Key generation failed: {e}")
             raise
 
-    def validate_ttl(self, ttl_seconds: Optional[int]) -> None:
+    def validate_ttl(self, ttl_seconds: int | None) -> None:
         """Validate TTL parameter.
-        
+
         Args:
             ttl_seconds: TTL value to validate
-            
+
         Raises:
             InvalidTTLValueError: If TTL is invalid
         """
-        if ttl_seconds is not None and ttl_seconds < 1:
-            raise InvalidTTLValueError(
-                f"TTL must be >= 1 second, got {ttl_seconds}"
-            )
+        from .constants import MIN_TTL_SECONDS
+
+        if ttl_seconds is not None and ttl_seconds < MIN_TTL_SECONDS:
+            raise InvalidTTLValueError(f"TTL must be >= {MIN_TTL_SECONDS} second, got {ttl_seconds}")
 
     @property
     def store_name(self) -> str:
@@ -454,73 +392,36 @@ class CacheService:
         return self._key_builder
 
     @property
-    def crypto_integration(self) -> Union[CryptoIntegration, NoOpCryptoIntegration]:
+    def crypto_integration(self) -> CryptoIntegration | NoOpCryptoIntegration:
         """Get the crypto integration instance."""
         return self._crypto
 
     @property
-    def hooks(self) -> Optional[ObservabilityHooks]:
+    def hooks(self) -> ObservabilityHooks | None:
         """Get the observability hooks instance."""
         return self._hooks
 
     async def health_check(self) -> dict[str, Any]:
         """Perform health check on cache service components.
-        
+
         Returns:
             Dictionary with component health status
         """
-        health_status: dict[str, Any] = {
-            "service": "healthy",
-            "store_name": self._store_name,
-            "key_prefix": self._key_prefix,
-            "components": {}
-        }
-        
-        try:
-            # Check backend
-            health_status["components"]["backend"] = "healthy"
-        except Exception as e:
-            health_status["components"]["backend"] = f"unhealthy: {e}"
-            health_status["service"] = "degraded"
-        
-        try:
-            # Check crypto availability
-            crypto_available = await self._crypto.is_available()
-            health_status["components"]["crypto"] = (
-                "healthy" if crypto_available else "disabled"
-            )
-        except Exception as e:
-            health_status["components"]["crypto"] = f"unhealthy: {e}"
-        
-        try:
-            # Check serializer
-            test_data = {"test": "health_check"}
-            serialized = self._serializer.serialize(test_data)
-            deserialized = self._serializer.deserialize(serialized)
-            if deserialized == test_data:
-                health_status["components"]["serializer"] = "healthy"
-            else:
-                health_status["components"]["serializer"] = "unhealthy: data mismatch"
-                health_status["service"] = "degraded"
-        except Exception as e:
-            health_status["components"]["serializer"] = f"unhealthy: {e}"
-            health_status["service"] = "degraded"
-        
-        return health_status
+        return await self._health_checker.check_component_health()
 
 
 def create_cache_service(
     store_name: str,
-    key_prefix: str = "cache",
-    serializer: Optional[Serializer] = None,
-    key_builder: Optional[KeyBuilder] = None,
+    key_prefix: str = DEFAULT_KEY_PREFIX,
+    serializer: Serializer | None = None,
+    key_builder: KeyBuilder | None = None,
     use_dapr_crypto: bool = False,
-    crypto_component_name: Optional[str] = None,
-    hooks: Optional[ObservabilityHooks] = None,
-    dapr_client: Optional[Any] = None
+    crypto_component_name: str | None = None,
+    hooks: ObservabilityHooks | None = None,
+    dapr_client: Any | None = None,
 ) -> CacheService:
     """Create CacheService with specified configuration.
-    
+
     Args:
         store_name: Dapr state store name
         key_prefix: Prefix for cache keys
@@ -530,30 +431,27 @@ def create_cache_service(
         crypto_component_name: Name of crypto component (required if use_dapr_crypto=True)
         hooks: Observability hooks
         dapr_client: Optional DaprClient instance for backend and crypto
-        
+
     Returns:
         Configured CacheService instance
-        
+
     Raises:
         ValueError: If configuration is invalid
     """
+    from .validators import validate_key_prefix, validate_store_name
+
     # Validate required parameters
-    if not store_name or not store_name.strip():
-        raise ValueError("store_name cannot be empty")
-    
-    if not key_prefix or not key_prefix.strip():
-        raise ValueError("key_prefix cannot be empty")
-    
-    # Create backend (timeout_seconds defaults to 5.0)
+    validate_store_name(store_name)
+    validate_key_prefix(key_prefix)
+
+    # Create backend
     backend = DaprStateBackend(store_name)
-    
+
     # Create crypto integration
     crypto_integration = create_crypto_integration(
-        use_dapr_crypto=use_dapr_crypto,
-        crypto_component_name=crypto_component_name,
-        dapr_client=dapr_client
+        use_dapr_crypto=use_dapr_crypto, crypto_component_name=crypto_component_name, dapr_client=dapr_client
     )
-    
+
     return CacheService(
         store_name=store_name,
         backend=backend,
@@ -561,5 +459,5 @@ def create_cache_service(
         key_builder=key_builder,
         crypto_integration=crypto_integration,
         hooks=hooks,
-        key_prefix=key_prefix
+        key_prefix=key_prefix,
     )

@@ -14,6 +14,6 @@ from .deduplication import (
 __all__ = [
     # Deduplication
     "DeduplicationManager",
-    "DeduplicationStats", 
+    "DeduplicationStats",
     "InstrumentedDeduplicationManager",
 ]

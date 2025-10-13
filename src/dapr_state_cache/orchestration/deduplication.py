@@ -8,26 +8,27 @@ for the same result.
 
 import asyncio
 import logging
-from typing import Any, Awaitable, Callable, Dict, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class DeduplicationManager:
     """Manages deduplication of cache miss computations.
-    
+
     Prevents thundering herd problem by ensuring that multiple concurrent
     requests for the same cache key only trigger one computation, with
     all requests sharing the result.
-    
+
     Features:
     - Thread-safe operation using asyncio.Lock
     - Automatic cleanup of completed futures
     - Exception propagation to all waiting requests
     - Memory-efficient (futures removed after completion)
-    
+
     Thread Safety:
     - Safe for concurrent use within the same event loop
     - Uses asyncio.Lock for atomic operations
@@ -36,26 +37,22 @@ class DeduplicationManager:
 
     def __init__(self) -> None:
         """Initialize deduplication manager."""
-        self._futures: Dict[str, asyncio.Future[Any]] = {}
+        self._futures: dict[str, asyncio.Future[Any]] = {}
         self._lock = asyncio.Lock()
 
-    async def deduplicate(
-        self,
-        key: str,
-        compute_func: Callable[[], Awaitable[T]]
-    ) -> T:
+    async def deduplicate(self, key: str, compute_func: Callable[[], Awaitable[T]]) -> T:
         """Execute computation with deduplication for the given key.
-        
+
         If another computation is already running for the same key,
         waits for that computation to complete instead of starting a new one.
-        
+
         Args:
             key: Cache key to deduplicate on
             compute_func: Async function to call if no computation is running
-            
+
         Returns:
             Result of the computation (either new or from existing future)
-            
+
         Raises:
             Any exception raised by compute_func, propagated to all waiters
         """
@@ -69,7 +66,7 @@ class DeduplicationManager:
                 # Create new future and start computation
                 future = asyncio.create_task(self._execute_computation(key, compute_func))
                 self._futures[key] = future
-        
+
         try:
             # Wait for computation to complete (either new or existing)
             result = await future
@@ -85,17 +82,13 @@ class DeduplicationManager:
             # to remove the same key
             await self._cleanup_future(key)
 
-    async def _execute_computation(
-        self,
-        key: str,
-        compute_func: Callable[[], Awaitable[T]]
-    ) -> T:
+    async def _execute_computation(self, key: str, compute_func: Callable[[], Awaitable[T]]) -> T:
         """Execute the computation function.
-        
+
         Args:
             key: Cache key (for logging)
             compute_func: Function to execute
-            
+
         Returns:
             Result of computation
         """
@@ -108,7 +101,7 @@ class DeduplicationManager:
 
     async def _cleanup_future(self, key: str) -> None:
         """Clean up completed future from registry.
-        
+
         Args:
             key: Cache key to clean up
         """
@@ -120,10 +113,10 @@ class DeduplicationManager:
 
     async def is_computation_running(self, key: str) -> bool:
         """Check if a computation is currently running for the given key.
-        
+
         Args:
             key: Cache key to check
-            
+
         Returns:
             True if computation is running, False otherwise
         """
@@ -132,10 +125,10 @@ class DeduplicationManager:
 
     async def cancel_computation(self, key: str) -> bool:
         """Cancel any running computation for the given key.
-        
+
         Args:
             key: Cache key to cancel computation for
-            
+
         Returns:
             True if computation was cancelled, False if no computation was running
         """
@@ -150,50 +143,44 @@ class DeduplicationManager:
 
     async def get_active_computations(self) -> list[str]:
         """Get list of keys with active computations.
-        
+
         Returns:
             List of cache keys that have computations running
         """
         async with self._lock:
-            return [
-                key for key, future in self._futures.items()
-                if not future.done()
-            ]
+            return [key for key, future in self._futures.items() if not future.done()]
 
     async def get_computation_count(self) -> int:
         """Get count of active computations.
-        
+
         Returns:
             Number of computations currently running
         """
         async with self._lock:
-            return len([
-                future for future in self._futures.values()
-                if not future.done()
-            ])
+            return len([future for future in self._futures.values() if not future.done()])
 
     async def clear_all_computations(self) -> int:
         """Cancel all running computations and clear the registry.
-        
+
         Returns:
             Number of computations that were cancelled
         """
         async with self._lock:
             cancelled_count = 0
-            
+
             for key, future in list(self._futures.items()):
                 if not future.done():
                     logger.debug(f"Cancelling computation for key '{key}' during clear")
                     future.cancel()
                     cancelled_count += 1
                 del self._futures[key]
-            
+
             return cancelled_count
 
 
 class DeduplicationStats:
     """Statistics for deduplication operations.
-    
+
     Tracks metrics about deduplication effectiveness and performance.
     """
 
@@ -206,7 +193,7 @@ class DeduplicationStats:
 
     async def record_request(self, was_deduplicated: bool) -> None:
         """Record a deduplication request.
-        
+
         Args:
             was_deduplicated: True if request was deduplicated (waited for existing),
                             False if it started a new computation
@@ -220,22 +207,19 @@ class DeduplicationStats:
 
     async def get_stats(self) -> dict[str, Any]:
         """Get current deduplication statistics.
-        
+
         Returns:
             Dictionary with deduplication metrics
         """
         async with self._lock:
-            deduplication_ratio = (
-                self.deduplicated_requests / self.total_requests
-                if self.total_requests > 0 else 0.0
-            )
-            
+            deduplication_ratio = self.deduplicated_requests / self.total_requests if self.total_requests > 0 else 0.0
+
             return {
                 "total_requests": self.total_requests,
                 "deduplicated_requests": self.deduplicated_requests,
                 "unique_computations": self.unique_computations,
                 "deduplication_ratio": deduplication_ratio,
-                "efficiency_percentage": deduplication_ratio * 100
+                "efficiency_percentage": deduplication_ratio * 100,
             }
 
     async def reset_stats(self) -> None:
@@ -248,7 +232,7 @@ class DeduplicationStats:
 
 class InstrumentedDeduplicationManager(DeduplicationManager):
     """DeduplicationManager with built-in statistics collection.
-    
+
     Extends the basic DeduplicationManager to automatically track
     deduplication effectiveness metrics.
     """
@@ -258,27 +242,23 @@ class InstrumentedDeduplicationManager(DeduplicationManager):
         super().__init__()
         self._stats = DeduplicationStats()
 
-    async def deduplicate(
-        self,
-        key: str,
-        compute_func: Callable[[], Awaitable[T]]
-    ) -> T:
+    async def deduplicate(self, key: str, compute_func: Callable[[], Awaitable[T]]) -> T:
         """Execute computation with deduplication and statistics tracking.
-        
+
         Args:
             key: Cache key to deduplicate on
             compute_func: Async function to call if no computation is running
-            
+
         Returns:
             Result of the computation
         """
         # Check if this will be deduplicated
         async with self._lock:
             was_deduplicated = key in self._futures
-        
+
         # Record the request
         await self._stats.record_request(was_deduplicated)
-        
+
         # Execute with deduplication
         return await super().deduplicate(key, compute_func)
 
@@ -289,7 +269,7 @@ class InstrumentedDeduplicationManager(DeduplicationManager):
 
     async def get_stats(self) -> dict[str, Any]:
         """Get current deduplication statistics.
-        
+
         Returns:
             Dictionary with deduplication metrics
         """

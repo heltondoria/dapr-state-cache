@@ -80,11 +80,11 @@ class JsonSerializer(Serializer):
             normalized_data = normalize_for_serialization(data)
             json_str = json.dumps(
                 normalized_data,
-                separators=(',', ':'),  # Compact representation
-                sort_keys=True,         # Deterministic order
-                ensure_ascii=False      # Allow Unicode characters
+                separators=(",", ":"),  # Compact representation
+                sort_keys=True,  # Deterministic order
+                ensure_ascii=False,  # Allow Unicode characters
             )
-            return json_str.encode('utf-8')
+            return json_str.encode("utf-8")
         except TypeError as e:
             raise CacheSerializationError(f"JSON serialization failed: {e}") from e
 
@@ -105,7 +105,7 @@ class JsonSerializer(Serializer):
             raise CacheSerializationError(f"Expected bytes, got {type(data).__name__}")
 
         try:
-            json_str = data.decode('utf-8')
+            json_str = data.decode("utf-8")
             return json.loads(json_str)
         except UnicodeDecodeError as e:
             raise CacheSerializationError(f"Invalid UTF-8 encoding: {e}") from e

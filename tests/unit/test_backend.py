@@ -5,20 +5,21 @@ Tests Dapr State Backend implementation and exception hierarchy
 with 100% coverage following AAA pattern and TDD principles.
 """
 
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
 from dapr_state_cache.backend import (
-    DaprStateBackend,
-    CacheBackendError,
-    RecoverableCacheError,
-    IrrecoverableCacheError,
-    CacheTimeoutError,
-    CacheSerializationError,
-    CacheCryptographyError,
-    DaprUnavailableError,
-    StateStoreNotConfiguredError,
     CacheAuthenticationError,
+    CacheBackendError,
+    CacheCryptographyError,
+    CacheSerializationError,
+    CacheTimeoutError,
+    DaprStateBackend,
+    DaprUnavailableError,
+    IrrecoverableCacheError,
+    RecoverableCacheError,
+    StateStoreNotConfiguredError,
 )
 
 
@@ -30,10 +31,10 @@ class TestCacheExceptions:
         # Arrange
         message = "Test error"
         key = "test:key"
-        
+
         # Act
         error = CacheBackendError(message, key)
-        
+
         # Assert
         assert str(error) == message
         assert error.key == key
@@ -43,10 +44,10 @@ class TestCacheExceptions:
         """Test CacheBackendError without key."""
         # Arrange
         message = "Test error without key"
-        
+
         # Act
         error = CacheBackendError(message)
-        
+
         # Assert
         assert str(error) == message
         assert error.key is None
@@ -56,10 +57,10 @@ class TestCacheExceptions:
         # Arrange
         message = "Recoverable error"
         key = "test:key"
-        
+
         # Act
         error = RecoverableCacheError(message, key)
-        
+
         # Assert
         assert isinstance(error, CacheBackendError)
         assert str(error) == message
@@ -70,10 +71,10 @@ class TestCacheExceptions:
         # Arrange
         message = "Irrecoverable error"
         key = "test:key"
-        
+
         # Act
         error = IrrecoverableCacheError(message, key)
-        
+
         # Assert
         assert isinstance(error, CacheBackendError)
         assert str(error) == message
@@ -84,10 +85,10 @@ class TestCacheExceptions:
         # Arrange & Act & Assert
         timeout_error = CacheTimeoutError("Timeout", "key1")
         assert isinstance(timeout_error, RecoverableCacheError)
-        
+
         serialization_error = CacheSerializationError("Serialization failed", "key2")
         assert isinstance(serialization_error, RecoverableCacheError)
-        
+
         crypto_error = CacheCryptographyError("Crypto failed", "key3")
         assert isinstance(crypto_error, RecoverableCacheError)
 
@@ -96,10 +97,10 @@ class TestCacheExceptions:
         # Arrange & Act & Assert
         dapr_error = DaprUnavailableError("Dapr unavailable")
         assert isinstance(dapr_error, IrrecoverableCacheError)
-        
+
         store_error = StateStoreNotConfiguredError("Store not configured")
         assert isinstance(store_error, IrrecoverableCacheError)
-        
+
         auth_error = CacheAuthenticationError("Auth failed")
         assert isinstance(auth_error, IrrecoverableCacheError)
 
@@ -112,11 +113,11 @@ class TestDaprStateBackend:
         # Arrange
         store_name = "test-store"
         timeout = 10.0
-        
+
         # Act
-        with patch('dapr.clients.DaprClient'):
+        with patch("dapr.clients.DaprClient"):
             backend = DaprStateBackend(store_name, timeout)
-        
+
         # Assert
         assert backend.store_name == store_name
         assert backend._timeout_seconds == timeout
@@ -125,11 +126,11 @@ class TestDaprStateBackend:
         """Test DaprStateBackend initialization with default timeout."""
         # Arrange
         store_name = "test-store"
-        
+
         # Act
-        with patch('dapr.clients.DaprClient'):
+        with patch("dapr.clients.DaprClient"):
             backend = DaprStateBackend(store_name)
-        
+
         # Assert
         assert backend.store_name == store_name
         assert backend._timeout_seconds == 5.0
@@ -139,44 +140,44 @@ class TestDaprStateBackend:
         # Arrange & Act & Assert
         with pytest.raises(ValueError) as exc_info:
             DaprStateBackend("")
-        
+
         assert "Store name cannot be empty" in str(exc_info.value)
 
-    @patch('dapr.clients.DaprClient')
+    @patch("dapr.clients.DaprClient")
     def test_ensure_dapr_client_success(self, mock_dapr_client: Mock) -> None:
         """Test successful Dapr client initialization."""
         # Arrange
         backend = DaprStateBackend("test-store")
-        
+
         # Act
         backend._ensure_dapr_client()
-        
+
         # Assert
         mock_dapr_client.assert_called_once()
         assert backend._dapr_client is not None
 
-    @patch('dapr.clients.DaprClient')
+    @patch("dapr.clients.DaprClient")
     def test_ensure_dapr_client_import_error(self, mock_dapr_client: Mock) -> None:
         """Test Dapr client initialization with import error."""
         # Arrange
         mock_dapr_client.side_effect = ImportError("No module named 'dapr'")
-        
+
         # Act & Assert - exception should be raised during initialization
         with pytest.raises(DaprUnavailableError) as exc_info:
             DaprStateBackend("test-store")
-        
+
         assert "Dapr Python SDK not available" in str(exc_info.value)
 
-    @patch('dapr.clients.DaprClient')
+    @patch("dapr.clients.DaprClient")
     def test_ensure_dapr_client_connection_error(self, mock_dapr_client: Mock) -> None:
         """Test Dapr client initialization with connection error."""
         # Arrange
         mock_dapr_client.side_effect = Exception("Connection refused")
-        
+
         # Act & Assert - exception should be raised during initialization
         with pytest.raises(DaprUnavailableError) as exc_info:
             DaprStateBackend("test-store")
-        
+
         assert "Failed to connect to Dapr sidecar" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -185,43 +186,39 @@ class TestDaprStateBackend:
         # Arrange
         key = "test:key"
         expected_data = b"test data"
-        
+
         mock_client = AsyncMock()
         mock_response = Mock()
         mock_response.data = expected_data
         mock_client.get_state.return_value = mock_response
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act
         result = await backend.get(key)
-        
+
         # Assert
         assert result == expected_data
-        mock_client.get_state.assert_called_once_with(
-            store_name="test-store",
-            key=key,
-            timeout=5.0
-        )
+        mock_client.get_state.assert_called_once_with(store_name="test-store", key=key, timeout=5.0)
 
     @pytest.mark.asyncio
     async def test_get_cache_miss(self) -> None:
         """Test cache get with cache miss."""
         # Arrange
         key = "test:key"
-        
+
         mock_client = AsyncMock()
         mock_response = Mock()
         mock_response.data = None  # Cache miss
         mock_client.get_state.return_value = mock_response
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act
         result = await backend.get(key)
-        
+
         # Assert
         assert result is None
 
@@ -229,13 +226,13 @@ class TestDaprStateBackend:
     async def test_get_empty_key_raises_error(self) -> None:
         """Test that empty key raises ValueError."""
         # Arrange
-        with patch('dapr.clients.DaprClient'):
+        with patch("dapr.clients.DaprClient"):
             backend = DaprStateBackend("test-store")
-        
+
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
             await backend.get("")
-        
+
         assert "Cache key cannot be empty" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -243,17 +240,17 @@ class TestDaprStateBackend:
         """Test get operation with store not configured error."""
         # Arrange
         key = "test:key"
-        
+
         mock_client = AsyncMock()
         mock_client.get_state.side_effect = Exception("store not configured")
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act & Assert
         with pytest.raises(StateStoreNotConfiguredError) as exc_info:
             await backend.get(key)
-        
+
         assert "not configured" in str(exc_info.value)
         assert exc_info.value.key == key
 
@@ -262,17 +259,17 @@ class TestDaprStateBackend:
         """Test get operation with timeout error."""
         # Arrange
         key = "test:key"
-        
+
         mock_client = AsyncMock()
         mock_client.get_state.side_effect = Exception("timeout occurred")
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act & Assert
         with pytest.raises(CacheTimeoutError) as exc_info:
             await backend.get(key)
-        
+
         assert "timeout" in str(exc_info.value)
         assert exc_info.value.key == key
 
@@ -281,17 +278,17 @@ class TestDaprStateBackend:
         """Test get operation with generic recoverable error."""
         # Arrange
         key = "test:key"
-        
+
         mock_client = AsyncMock()
         mock_client.get_state.side_effect = Exception("network error")
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act & Assert
         with pytest.raises(RecoverableCacheError) as exc_info:
             await backend.get(key)
-        
+
         assert "Cache get failed" in str(exc_info.value)
         assert exc_info.value.key == key
 
@@ -302,61 +299,57 @@ class TestDaprStateBackend:
         key = "test:key"
         value = b"test data"
         ttl = 3600
-        
+
         mock_client = AsyncMock()
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act
         await backend.set(key, value, ttl)
-        
+
         # Assert
         mock_client.save_state.assert_called_once_with(
-            store_name="test-store",
-            key=key,
-            value=value,
-            metadata={"ttlInSeconds": "3600"},
-            timeout=5.0
+            store_name="test-store", key=key, value=value, metadata={"ttlInSeconds": "3600"}, timeout=5.0
         )
 
     @pytest.mark.asyncio
     async def test_set_empty_key_raises_error(self) -> None:
         """Test that empty key raises ValueError."""
         # Arrange
-        with patch('dapr.clients.DaprClient'):
+        with patch("dapr.clients.DaprClient"):
             backend = DaprStateBackend("test-store")
-        
+
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
             await backend.set("", b"data", 3600)
-        
+
         assert "Cache key cannot be empty" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_set_non_bytes_value_raises_error(self) -> None:
         """Test that non-bytes value raises ValueError."""
         # Arrange
-        with patch('dapr.clients.DaprClient'):
+        with patch("dapr.clients.DaprClient"):
             backend = DaprStateBackend("test-store")
-        
+
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
             await backend.set("key", "not bytes", 3600)  # type: ignore
-        
+
         assert "Cache value must be bytes" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_set_invalid_ttl_raises_error(self) -> None:
         """Test that invalid TTL raises ValueError."""
         # Arrange
-        with patch('dapr.clients.DaprClient'):
+        with patch("dapr.clients.DaprClient"):
             backend = DaprStateBackend("test-store")
-        
+
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
             await backend.set("key", b"data", 0)
-        
+
         assert "TTL must be >= 1 second" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -366,17 +359,17 @@ class TestDaprStateBackend:
         key = "test:key"
         value = b"test data"
         ttl = 3600
-        
+
         mock_client = AsyncMock()
         mock_client.save_state.side_effect = Exception("store not found")
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act & Assert
         with pytest.raises(StateStoreNotConfiguredError) as exc_info:
             await backend.set(key, value, ttl)
-        
+
         assert "not configured" in str(exc_info.value)
         assert exc_info.value.key == key
 
@@ -387,17 +380,17 @@ class TestDaprStateBackend:
         key = "test:key"
         value = b"test data"
         ttl = 3600
-        
+
         mock_client = AsyncMock()
         mock_client.save_state.side_effect = Exception("operation timeout")
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act & Assert
         with pytest.raises(CacheTimeoutError) as exc_info:
             await backend.set(key, value, ttl)
-        
+
         assert "timeout" in str(exc_info.value)
         assert exc_info.value.key == key
 
@@ -406,19 +399,19 @@ class TestDaprStateBackend:
         """Test set operation with generic recoverable error."""
         # Arrange
         key = "test:key"
-        value = b"test data" 
+        value = b"test data"
         ttl = 3600
-        
+
         mock_client = AsyncMock()
         mock_client.save_state.side_effect = Exception("disk full")
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act & Assert
         with pytest.raises(RecoverableCacheError) as exc_info:
             await backend.set(key, value, ttl)
-        
+
         assert "Cache set failed" in str(exc_info.value)
         assert exc_info.value.key == key
 
@@ -427,34 +420,30 @@ class TestDaprStateBackend:
         """Test successful cache invalidation."""
         # Arrange
         key = "test:key"
-        
+
         mock_client = AsyncMock()
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act
         await backend.invalidate(key)
-        
+
         # Assert
-        mock_client.delete_state.assert_called_once_with(
-            store_name="test-store",
-            key=key,
-            timeout=5.0
-        )
+        mock_client.delete_state.assert_called_once_with(store_name="test-store", key=key, timeout=5.0)
 
     @pytest.mark.asyncio
     async def test_invalidate_empty_key_noop(self) -> None:
         """Test that invalidating empty key is no-op."""
         # Arrange
         mock_client = AsyncMock()
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act
         await backend.invalidate("")
-        
+
         # Assert
         mock_client.delete_state.assert_not_called()
 
@@ -463,16 +452,16 @@ class TestDaprStateBackend:
         """Test that invalidation errors are logged but not propagated."""
         # Arrange
         key = "test:key"
-        
+
         mock_client = AsyncMock()
         mock_client.delete_state.side_effect = Exception("delete failed")
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act - should not raise exception
         await backend.invalidate(key)
-        
+
         # Assert
         mock_client.delete_state.assert_called_once()
 
@@ -481,15 +470,15 @@ class TestDaprStateBackend:
         """Test prefix invalidation logs warning about not being implemented."""
         # Arrange
         prefix = "test:prefix"
-        
+
         mock_client = AsyncMock()
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act - should not raise exception
         await backend.invalidate_prefix(prefix)
-        
+
         # Assert - no actual delete operations should be called
         mock_client.delete_state.assert_not_called()
 
@@ -498,13 +487,13 @@ class TestDaprStateBackend:
         """Test that invalidating empty prefix is no-op."""
         # Arrange
         mock_client = AsyncMock()
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act
         await backend.invalidate_prefix("")
-        
+
         # Assert - no operations should be performed
         assert not mock_client.method_calls
 
@@ -512,13 +501,13 @@ class TestDaprStateBackend:
         """Test successful client close."""
         # Arrange
         mock_client = Mock()
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act
         backend.close()
-        
+
         # Assert
         mock_client.close.assert_called_once()
         assert backend._dapr_client is None
@@ -528,13 +517,13 @@ class TestDaprStateBackend:
         # Arrange
         mock_client = Mock()
         mock_client.close.side_effect = Exception("Close failed")
-        
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             backend = DaprStateBackend("test-store")
-        
+
         # Act - should not raise exception
         backend.close()
-        
+
         # Assert
         assert backend._dapr_client is None
 
@@ -543,10 +532,10 @@ class TestDaprStateBackend:
         # Arrange
         backend = DaprStateBackend.__new__(DaprStateBackend)  # Skip __init__
         backend._dapr_client = None
-        
+
         # Act - should not raise exception
         backend.close()
-        
+
         # Assert
         assert backend._dapr_client is None
 
@@ -554,13 +543,13 @@ class TestDaprStateBackend:
         """Test context manager functionality."""
         # Arrange
         mock_client = Mock()
-        
+
         # Act & Assert
-        with patch('dapr.clients.DaprClient', return_value=mock_client):
+        with patch("dapr.clients.DaprClient", return_value=mock_client):
             with DaprStateBackend("test-store") as backend:
                 assert backend is not None
                 assert isinstance(backend, DaprStateBackend)
-            
+
             # After exiting context, client should be closed
             mock_client.close.assert_called_once()
 
@@ -568,11 +557,11 @@ class TestDaprStateBackend:
         """Test store_name property."""
         # Arrange
         store_name = "my-test-store"
-        
+
         # Act
-        with patch('dapr.clients.DaprClient'):
+        with patch("dapr.clients.DaprClient"):
             backend = DaprStateBackend(store_name)
-        
+
         # Assert
         assert backend.store_name == store_name
 
@@ -581,20 +570,20 @@ class TestDaprStateBackend:
         """Test get operation when Dapr client is None after initialization."""
         # Arrange
         key = "test:key"
-        
+
         # Create backend without triggering initialization
         backend = DaprStateBackend.__new__(DaprStateBackend)
         backend._store_name = "test-store"
         backend._timeout_seconds = 5.0
         backend._dapr_client = None
-        
+
         # Mock _ensure_dapr_client to not set the client
         backend._ensure_dapr_client = Mock()  # type: ignore
-        
+
         # Act & Assert - DaprUnavailableError gets reclassified as RecoverableCacheError
         with pytest.raises(RecoverableCacheError) as exc_info:
             await backend.get(key)
-        
+
         assert "Cache get failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -604,20 +593,20 @@ class TestDaprStateBackend:
         key = "test:key"
         value = b"test data"
         ttl = 3600
-        
+
         # Create backend without triggering initialization
         backend = DaprStateBackend.__new__(DaprStateBackend)
         backend._store_name = "test-store"
         backend._timeout_seconds = 5.0
         backend._dapr_client = None
-        
+
         # Mock _ensure_dapr_client to not set the client
         backend._ensure_dapr_client = Mock()  # type: ignore
-        
+
         # Act & Assert - DaprUnavailableError gets reclassified as RecoverableCacheError
         with pytest.raises(RecoverableCacheError) as exc_info:
             await backend.set(key, value, ttl)
-        
+
         assert "Cache set failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -625,19 +614,19 @@ class TestDaprStateBackend:
         """Test invalidate operation when Dapr client is None after initialization."""
         # Arrange
         key = "test:key"
-        
+
         # Create backend without triggering initialization
         backend = DaprStateBackend.__new__(DaprStateBackend)
         backend._store_name = "test-store"
         backend._timeout_seconds = 5.0
         backend._dapr_client = None
-        
+
         # Mock _ensure_dapr_client to not set the client
         backend._ensure_dapr_client = Mock()  # type: ignore
-        
+
         # Act - should not raise exception (best-effort operation)
         await backend.invalidate(key)
-        
+
         # Assert - verify _ensure_dapr_client was called
         backend._ensure_dapr_client.assert_called_once()
 
@@ -646,19 +635,19 @@ class TestDaprStateBackend:
         """Test invalidate_prefix error handling."""
         # Arrange
         prefix = "test:prefix"
-        
+
         # Create backend and force an exception in _ensure_dapr_client
         backend = DaprStateBackend.__new__(DaprStateBackend)
         backend._store_name = "test-store"
         backend._timeout_seconds = 5.0
         backend._dapr_client = None
-        
+
         def mock_ensure_client():
             raise Exception("Connection failed")
-        
+
         backend._ensure_dapr_client = mock_ensure_client  # type: ignore
-        
+
         # Act - should not raise exception (best-effort operation)
         await backend.invalidate_prefix(prefix)
-        
+
         # Assert - no exception should be raised (it's logged but not propagated)

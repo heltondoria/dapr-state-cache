@@ -1,7 +1,7 @@
 [project]
 name = "dapr-state-cache"
 version = "0.5.0"
-description = "Cache transparente para aplicações Dapr"
+description = "Transparent cache for Dapr applications"
 readme = "README.md"
 authors = [
     { name = "Helton Dória", email = "helton.doria@gmail.com" }
@@ -48,11 +48,11 @@ select = [
     "SIM", # flake8-simplify
     "N",   # pep8-naming
     "S",   # flake8-bandit (security)
-    "RUF", # regras do Ruff
+    "RUF", # Ruff rules
 ]
 ignore = [
-    "UP047",  # type parameters (incompatível com ParamSpec em overloads)
-    "RUF022", # __all__ sorting (preferimos agrupamento semântico)
+    "UP047",  # type parameters (incompatible with ParamSpec in overloads)
+    "RUF022", # __all__ sorting (we prefer semantic grouping)
 ]
 
 [tool.ruff.lint.per-file-ignores]

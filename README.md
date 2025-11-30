@@ -5,79 +5,79 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Coverage](https://img.shields.io/badge/coverage-90%25+-brightgreen.svg)](htmlcov/index.html)
 
-**Cache transparente de alta performance para aplicações Dapr**
+**High-performance transparent cache for Dapr applications**
 
-Uma biblioteca Python moderna que adiciona cache transparente a funções usando Dapr State Store, com suporte nativo a operações síncronas e assíncronas.
+A modern Python library that adds transparent caching to functions using Dapr State Store, with native support for synchronous and asynchronous operations.
 
 ## Features
 
-- **Decorator simples** - Adicione cache com uma única linha usando `@cacheable`
-- **Sync e Async nativos** - Detecção automática do tipo de função, sem ThreadPool
-- **Backend HTTP direto** - Comunicação direta com sidecar Dapr via httpx
-- **Serialização eficiente** - MsgPack como padrão para máxima performance
-- **Métricas OpenTelemetry** - Observabilidade completa out-of-the-box
-- **Thundering Herd Protection** - Deduplicação automática de chamadas concorrentes
-- **Extensível via Protocols** - Customize serialização, chaves e métricas
-- **Type-safe** - Totalmente tipado com suporte a mypy e pyright
+- **Simple decorator** - Add caching with a single line using `@cacheable`
+- **Native Sync and Async** - Automatic function type detection, no ThreadPool
+- **Direct HTTP backend** - Direct communication with Dapr sidecar via httpx
+- **Efficient serialization** - MsgPack as default for maximum performance
+- **OpenTelemetry metrics** - Complete observability out-of-the-box
+- **Thundering Herd Protection** - Automatic deduplication of concurrent calls
+- **Extensible via Protocols** - Customize serialization, keys, and metrics
+- **Type-safe** - Fully typed with mypy and pyright support
 
-## Instalação
+## Installation
 
-### Com pip
+### With pip
 
 ```bash
 pip install dapr-state-cache
 ```
 
-### Com uv (recomendado)
+### With uv (recommended)
 
 ```bash
 uv add dapr-state-cache
 ```
 
-### Dependências de desenvolvimento
+### Development dependencies
 
 ```bash
 uv add dapr-state-cache --dev
-# ou
+# or
 pip install dapr-state-cache[dev]
 ```
 
 ## Quick Start
 
-### Exemplo básico
+### Basic example
 
 ```python
 from dapr_state_cache import cacheable
 
-# Função síncrona com cache
+# Synchronous function with cache
 @cacheable(store_name="cache", ttl_seconds=300)
 def get_user(user_id: int) -> dict:
-    # Operação custosa - executada apenas no cache miss
+    # Expensive operation - executed only on cache miss
     return database.query(user_id)
 
-# Função assíncrona com cache
+# Asynchronous function with cache
 @cacheable(store_name="cache", ttl_seconds=300)
 async def get_user_async(user_id: int) -> dict:
     return await database.query_async(user_id)
 
-# Uso - cache é transparente
-user = get_user(123)  # Cache miss - executa query
-user = get_user(123)  # Cache hit - retorna do cache
+# Usage - cache is transparent
+user = get_user(123)  # Cache miss - executes query
+user = get_user(123)  # Cache hit - returns from cache
 
-# Invalidação manual
+# Manual invalidation
 get_user.invalidate(123)
 await get_user_async.invalidate_async(456)
 ```
 
-### Uso sem parênteses
+### Usage without parentheses
 
 ```python
-@cacheable  # Usa valores padrão: store_name="cache", ttl_seconds=3600
+@cacheable  # Uses default values: store_name="cache", ttl_seconds=3600
 def simple_function(x: int) -> int:
     return x * 2
 ```
 
-### Com métricas
+### With metrics
 
 ```python
 from dapr_state_cache import cacheable, InMemoryMetrics
@@ -88,20 +88,20 @@ metrics = InMemoryMetrics()
 def compute_expensive(x: int) -> int:
     return x ** 2
 
-# Após algumas chamadas
+# After some calls
 stats = metrics.get_stats()
 print(f"Hit ratio: {stats.hit_ratio:.2%}")
 print(f"Avg hit latency: {stats.avg_hit_latency_ms:.1f}ms")
 ```
 
-## Configuração do Ambiente Dapr
+## Dapr Environment Configuration
 
-### Variáveis de ambiente
+### Environment variables
 
-| Variável | Padrão | Descrição |
-|----------|--------|-----------|
-| `DAPR_HTTP_HOST` | `127.0.0.1` | Host do sidecar Dapr |
-| `DAPR_HTTP_PORT` | `3500` | Porta do sidecar Dapr |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DAPR_HTTP_HOST` | `127.0.0.1` | Dapr sidecar host |
+| `DAPR_HTTP_PORT` | `3500` | Dapr sidecar port |
 
 ### Component YAML (Redis)
 
@@ -122,83 +122,83 @@ spec:
       value: "false"
 ```
 
-### State Stores compatíveis
+### Compatible State Stores
 
-Qualquer state store Dapr com suporte a TTL:
+Any Dapr state store with TTL support:
 
-| Store | Recomendação |
-|-------|--------------|
-| Redis | Produção (recomendado) |
-| MongoDB | Produção |
-| PostgreSQL | Produção |
-| Azure Cosmos DB | Produção |
-| In-Memory | Apenas desenvolvimento |
+| Store | Recommendation |
+|-------|----------------|
+| Redis | Production (recommended) |
+| MongoDB | Production |
+| PostgreSQL | Production |
+| Azure Cosmos DB | Production |
+| In-Memory | Development only |
 
-## Documentação Detalhada
+## Detailed Documentation
 
-### Parâmetros do decorator @cacheable
+### @cacheable decorator parameters
 
 ```python
 @cacheable(
-    store_name: str = "cache",           # Nome do state store Dapr
-    ttl_seconds: int = 3600,             # TTL em segundos (1 hora padrão)
-    key_prefix: str = "cache",           # Prefixo das chaves de cache
-    key_builder: KeyBuilder | None = None,  # Construtor de chaves customizado
-    serializer: Serializer | None = None,   # Serializer customizado
-    metrics: CacheMetrics | None = None,    # Coletor de métricas
+    store_name: str = "cache",           # Dapr state store name
+    ttl_seconds: int = 3600,             # TTL in seconds (1 hour default)
+    key_prefix: str = "cache",           # Cache key prefix
+    key_builder: KeyBuilder | None = None,  # Custom key builder
+    serializer: Serializer | None = None,   # Custom serializer
+    metrics: CacheMetrics | None = None,    # Metrics collector
 )
 ```
 
-### Serialização
+### Serialization
 
-A biblioteca usa **MsgPack** como formato de serialização padrão por ser:
+The library uses **MsgPack** as the default serialization format because it is:
 
-- **Compacto** - Formato binário menor que JSON
-- **Rápido** - Serialização/deserialização otimizadas
-- **Compatível** - Suporta tipos Python nativos
+- **Compact** - Binary format smaller than JSON
+- **Fast** - Optimized serialization/deserialization
+- **Compatible** - Supports native Python types
 
-#### Tipos suportados
+#### Supported types
 
-| Tipo Python | Suporte |
+| Python Type | Support |
 |-------------|---------|
-| `None`, `bool`, `int`, `float`, `str` | Sim |
-| `bytes` | Sim |
-| `list`, `tuple`, `dict` | Sim |
+| `None`, `bool`, `int`, `float`, `str` | Yes |
+| `bytes` | Yes |
+| `list`, `tuple`, `dict` | Yes |
 
-### Geração de chaves
+### Key Generation
 
-O formato padrão das chaves é:
+The default key format is:
 
 ```text
 {prefix}:{module}.{qualname}:{hash}
 ```
 
-Exemplo: `cache:myapp.services.get_user:a1b2c3d4e5f6g7h8`
+Example: `cache:myapp.services.get_user:a1b2c3d4e5f6g7h8`
 
-#### Algoritmo
+#### Algorithm
 
-1. Obtém caminho completo da função (`module.qualname`)
-2. Filtra `self`/`cls` de métodos (cache compartilhado entre instâncias)
-3. Serializa argumentos para JSON
-4. Calcula SHA256 truncado (16 caracteres)
+1. Gets full function path (`module.qualname`)
+2. Filters `self`/`cls` from methods (cache shared between instances)
+3. Serializes arguments to JSON
+4. Calculates truncated SHA256 (16 characters)
 
-### Métricas
+### Metrics
 
-A biblioteca oferece três coletores de métricas:
+The library offers three metrics collectors:
 
-#### NoOpMetrics (padrão)
+#### NoOpMetrics (default)
 
-Não coleta métricas - zero overhead.
+Does not collect metrics - zero overhead.
 
 ```python
-@cacheable(store_name="cache")  # NoOpMetrics implícito
+@cacheable(store_name="cache")  # Implicit NoOpMetrics
 def my_function():
     pass
 ```
 
 #### InMemoryMetrics
 
-Coleta métricas em memória - ideal para desenvolvimento e testes.
+Collects metrics in memory - ideal for development and testing.
 
 ```python
 from dapr_state_cache import cacheable, InMemoryMetrics
@@ -209,29 +209,29 @@ metrics = InMemoryMetrics()
 def my_function():
     pass
 
-# Estatísticas agregadas
+# Aggregated statistics
 stats = metrics.get_stats()
 print(f"Hits: {stats.hits}")
 print(f"Misses: {stats.misses}")
 print(f"Hit ratio: {stats.hit_ratio:.2%}")
 
-# Top chaves mais acessadas
+# Top most accessed keys
 top_keys = metrics.get_top_keys(by="hits", limit=10)
 
-# Estatísticas por chave
+# Statistics per key
 key_stats = metrics.get_key_stats("cache:module.func:abc123")
 ```
 
 #### OpenTelemetryMetrics
 
-Integração com OpenTelemetry para produção.
+OpenTelemetry integration for production.
 
 ```python
 from dapr_state_cache import cacheable, OpenTelemetryMetrics
 from opentelemetry import metrics
 from opentelemetry.sdk.metrics import MeterProvider
 
-# Configura OpenTelemetry
+# Configure OpenTelemetry
 metrics.set_meter_provider(MeterProvider())
 
 otel_metrics = OpenTelemetryMetrics()
@@ -241,24 +241,24 @@ def my_function():
     pass
 ```
 
-**Métricas exportadas:**
+**Exported metrics:**
 
-| Métrica | Tipo | Descrição |
-|---------|------|-----------|
-| `cache.hits` | Counter | Número de cache hits |
-| `cache.misses` | Counter | Número de cache misses |
-| `cache.writes` | Counter | Número de escritas |
-| `cache.errors` | Counter | Número de erros |
-| `cache.latency` | Histogram | Latência das operações (segundos) |
-| `cache.size` | Histogram | Tamanho dos dados (bytes) |
+| Metric | Type | Description |
+|--------|------|-------------|
+| `cache.hits` | Counter | Number of cache hits |
+| `cache.misses` | Counter | Number of cache misses |
+| `cache.writes` | Counter | Number of writes |
+| `cache.errors` | Counter | Number of errors |
+| `cache.latency` | Histogram | Operation latency (seconds) |
+| `cache.size` | Histogram | Data size (bytes) |
 
-### Deduplicação (Thundering Herd Protection)
+### Deduplication (Thundering Herd Protection)
 
-Quando múltiplas chamadas concorrentes tentam computar o mesmo valor (cache miss):
+When multiple concurrent calls try to compute the same value (cache miss):
 
-1. Apenas a **primeira computação** é executada
-2. Demais chamadas **aguardam** o resultado
-3. Resultado é **compartilhado** com todas as chamadas
+1. Only the **first computation** is executed
+2. Other calls **wait** for the result
+3. Result is **shared** with all calls
 
 ```python
 import asyncio
@@ -266,42 +266,42 @@ from dapr_state_cache import cacheable
 
 @cacheable(store_name="cache", ttl_seconds=60)
 async def expensive_operation(key: str) -> dict:
-    await asyncio.sleep(1)  # Simula operação lenta
+    await asyncio.sleep(1)  # Simulates slow operation
     return {"result": key}
 
-# 100 chamadas concorrentes - apenas 1 execução real
+# 100 concurrent calls - only 1 actual execution
 results = await asyncio.gather(*[
     expensive_operation("same-key")
     for _ in range(100)
 ])
 ```
 
-### Tratamento de erros
+### Error Handling
 
-A biblioteca segue uma política **best-effort** - erros de cache não quebram o fluxo:
+The library follows a **best-effort** policy - cache errors do not break the flow:
 
-| Cenário | Comportamento |
-|---------|---------------|
-| Falha de conexão | Log warning + executa função |
-| Falha de serialização | Log warning + executa função |
-| Timeout | Log warning + executa função |
+| Scenario | Behavior |
+|----------|----------|
+| Connection failure | Log warning + execute function |
+| Serialization failure | Log warning + execute function |
+| Timeout | Log warning + execute function |
 
-#### Exceções disponíveis
+#### Available exceptions
 
 ```python
 from dapr_state_cache import (
-    CacheError,              # Erro base
-    CacheConnectionError,    # Falha ao conectar com sidecar
-    CacheSerializationError, # Falha de serialização
-    CacheKeyError,           # Chave inválida ou vazia
+    CacheError,              # Base error
+    CacheConnectionError,    # Failed to connect to sidecar
+    CacheSerializationError, # Serialization failure
+    CacheKeyError,           # Invalid or empty key
 )
 ```
 
-## Extensibilidade
+## Extensibility
 
-A biblioteca usa **Protocols** para permitir implementações customizadas.
+The library uses **Protocols** to allow custom implementations.
 
-### Serializer customizado
+### Custom Serializer
 
 ```python
 import json
@@ -320,7 +320,7 @@ def my_function():
     pass
 ```
 
-### KeyBuilder customizado
+### Custom KeyBuilder
 
 ```python
 from collections.abc import Callable
@@ -344,14 +344,14 @@ def tenant_function():
     pass
 ```
 
-### Metrics customizado
+### Custom Metrics
 
 ```python
 from dapr_state_cache import cacheable
 
 class PrometheusMetrics:
     def record_hit(self, key: str, latency: float) -> None:
-        # Integração com Prometheus
+        # Prometheus integration
         cache_hits_total.labels(key=key).inc()
 
     def record_miss(self, key: str, latency: float) -> None:
@@ -370,140 +370,140 @@ def my_function():
 
 ## API Reference
 
-### Classes principais
+### Main Classes
 
-| Classe | Descrição |
-|--------|-----------|
-| `cacheable` | Decorator principal para adicionar cache |
-| `CacheableWrapper` | Wrapper retornado pelo decorator |
-| `DaprStateBackend` | Backend de comunicação com Dapr |
-| `MsgPackSerializer` | Serializer MsgPack (padrão) |
-| `DefaultKeyBuilder` | Construtor de chaves (padrão) |
-| `DeduplicationManager` | Gerenciador de deduplicação |
+| Class | Description |
+|-------|-------------|
+| `cacheable` | Main decorator to add caching |
+| `CacheableWrapper` | Wrapper returned by the decorator |
+| `DaprStateBackend` | Dapr communication backend |
+| `MsgPackSerializer` | MsgPack serializer (default) |
+| `DefaultKeyBuilder` | Key builder (default) |
+| `DeduplicationManager` | Deduplication manager |
 
-### Métricas
+### Metrics
 
-| Classe | Descrição |
-|--------|-----------|
-| `NoOpMetrics` | Coletor nulo (padrão) |
-| `InMemoryMetrics` | Coletor em memória |
-| `OpenTelemetryMetrics` | Integração OpenTelemetry |
-| `CacheStats` | Estatísticas agregadas |
-| `KeyStats` | Estatísticas por chave |
+| Class | Description |
+|-------|-------------|
+| `NoOpMetrics` | Null collector (default) |
+| `InMemoryMetrics` | In-memory collector |
+| `OpenTelemetryMetrics` | OpenTelemetry integration |
+| `CacheStats` | Aggregated statistics |
+| `KeyStats` | Per-key statistics |
 
-### Exceções
+### Exceptions
 
-| Exceção | Descrição |
-|---------|-----------|
-| `CacheError` | Erro base |
-| `CacheConnectionError` | Falha de conexão |
-| `CacheSerializationError` | Falha de serialização |
-| `CacheKeyError` | Chave inválida |
+| Exception | Description |
+|-----------|-------------|
+| `CacheError` | Base error |
+| `CacheConnectionError` | Connection failure |
+| `CacheSerializationError` | Serialization failure |
+| `CacheKeyError` | Invalid key |
 
 ### Protocols
 
-| Protocol | Descrição |
-|----------|-----------|
-| `SerializerProtocol` | Interface para serializers |
-| `KeyBuilder` | Interface para key builders |
-| `CacheMetricsProtocol` | Interface para coletores de métricas |
+| Protocol | Description |
+|----------|-------------|
+| `SerializerProtocol` | Interface for serializers |
+| `KeyBuilder` | Interface for key builders |
+| `CacheMetricsProtocol` | Interface for metrics collectors |
 
-## Desenvolvimento
+## Development
 
-### Configuração do ambiente
+### Environment setup
 
 ```bash
-# Clone o repositório
+# Clone the repository
 git clone https://github.com/heltondoria/dapr-state-cache.git
 cd dapr-state-cache
 
-# Instale dependências de desenvolvimento
+# Install development dependencies
 uv sync --dev
-# ou
+# or
 pip install -e ".[dev]"
 ```
 
-### Comandos do Makefile
+### Makefile commands
 
-#### Desenvolvimento rápido
+#### Quick development
 
 ```bash
 make check      # Lint + format + types (< 10s)
-make fix        # Auto-fix de problemas
+make fix        # Auto-fix issues
 ```
 
-#### Validação completa
+#### Complete validation
 
 ```bash
-make validate   # Análise completa + testes (< 60s)
-make health     # Assessment completo do projeto
+make validate   # Complete analysis + tests (< 60s)
+make health     # Full project assessment
 ```
 
-#### Testes
+#### Tests
 
 ```bash
-make test-quick     # Testes unitários rápidos
-make test-coverage  # Testes com cobertura (90%+ requerido)
-make test-all       # Todos os testes
+make test-quick     # Quick unit tests
+make test-coverage  # Tests with coverage (90%+ required)
+make test-all       # All tests
 ```
 
-#### Análise de qualidade
+#### Quality analysis
 
 ```bash
-make lint       # Linting com ruff
-make type-check # Verificação de tipos com pyright
-make radon      # Análise de complexidade
-make vulture    # Detecção de código morto
-make security   # Análise de segurança
-make quality    # Análise completa
+make lint       # Linting with ruff
+make type-check # Type checking with pyright
+make radon      # Complexity analysis
+make vulture    # Dead code detection
+make security   # Security analysis
+make quality    # Complete analysis
 ```
 
-### Padrões de qualidade
+### Quality standards
 
-O projeto segue princípios de **Clean Code** e **TDD**:
+The project follows **Clean Code** and **TDD** principles:
 
-| Métrica | Requisito |
-|---------|-----------|
-| Cobertura de linhas | 90%+ |
-| Cobertura de branches | 90%+ |
-| Complexidade ciclomática | ≤5 por método |
-| Tamanho de método | ≤20 linhas |
-| Código morto | 0% |
-| Erros de tipo | 0 |
-| Erros de lint | 0 |
+| Metric | Requirement |
+|--------|-------------|
+| Line coverage | 90%+ |
+| Branch coverage | 90%+ |
+| Cyclomatic complexity | ≤5 per method |
+| Method size | ≤20 lines |
+| Dead code | 0% |
+| Type errors | 0 |
+| Lint errors | 0 |
 
-## Contribuição
+## Contributing
 
-Contribuições são bem-vindas! Por favor:
+Contributions are welcome! Please:
 
-1. Faça fork do repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/amazing-feature`)
-3. Execute `make validate` antes de commitar
-4. Faça commit seguindo [Conventional Commits](https://www.conventionalcommits.org/)
-5. Abra um Pull Request
+1. Fork the repository
+2. Create a branch for your feature (`git checkout -b feature/amazing-feature`)
+3. Run `make validate` before committing
+4. Commit following [Conventional Commits](https://www.conventionalcommits.org/)
+5. Open a Pull Request
 
-### Requisitos para PR
+### PR requirements
 
-- Todos os testes passando
-- Cobertura de código mantida em 90%+
-- Zero erros de lint e tipo
-- Documentação atualizada
+- All tests passing
+- Code coverage maintained at 90%+
+- Zero lint and type errors
+- Documentation updated
 
-## Compatibilidade
+## Compatibility
 
-| Componente | Versão mínima |
-|------------|---------------|
+| Component | Minimum version |
+|-----------|-----------------|
 | Python | 3.12+ |
 | Dapr | 1.10+ |
 
-## Licença
+## License
 
-Este projeto está licenciado sob a [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
 
-## Autor
+## Author
 
 **Helton Dória** - [helton.doria@gmail.com](mailto:helton.doria@gmail.com)
 
 ---
 
-Feito com Python e Dapr
+Made with Python and Dapr

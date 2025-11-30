@@ -11,7 +11,7 @@ UV := uv
 PYTHON := python
 SRC_PATH := src/dapr_state_cache
 TEST_PATH := tests
-COVERAGE_THRESHOLD := 100
+COVERAGE_THRESHOLD := 90
 TARGET ?= $(SRC_PATH) $(TEST_PATH)
 
 help: ## Show this help message

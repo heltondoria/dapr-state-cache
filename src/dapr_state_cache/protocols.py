@@ -1,13 +1,9 @@
-"""
-Protocols for extensibility and type safety.
+"""Protocols para extensibilidade da biblioteca.
 
-This module defines the contracts that allow users to extend the library
-with custom implementations while maintaining type safety and clear interfaces.
-
-Protocols defined:
-- KeyBuilder: For custom cache key generation
-- Serializer: For custom data serialization/deserialization
-- ObservabilityHooks: For custom observability and monitoring integration
+Define interfaces que permitem implementações customizadas de:
+- KeyBuilder: Geração de chaves de cache
+- Serializer: Serialização/deserialização de dados
+- CacheMetrics: Coleta de métricas
 """
 
 from collections.abc import Callable
@@ -15,106 +11,133 @@ from typing import Any, Protocol
 
 
 class KeyBuilder(Protocol):
-    """Protocol for custom cache key builders.
+    """Protocol para construtores de chaves de cache.
 
-    Allows users to customize how cache keys are generated from function
-    signatures and arguments, enabling specialized caching strategies.
+    Implemente este protocol para customizar como as chaves
+    de cache são geradas a partir de funções e argumentos.
+
+    Example:
+        ```python
+        class MyKeyBuilder:
+            def build_key(self, func, args, kwargs) -> str:
+                return f"my-prefix:{func.__name__}:{hash(args)}"
+        ```
     """
 
-    def build_key(self, func: Callable, args: tuple, kwargs: dict) -> str:
-        """Build a cache key from function and its arguments.
+    def build_key(
+        self,
+        func: Callable[..., Any],
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> str:
+        """Constrói chave de cache.
 
         Args:
-            func: The decorated function
-            args: Positional arguments passed to the function
-            kwargs: Keyword arguments passed to the function
+            func: Função decorada
+            args: Argumentos posicionais
+            kwargs: Argumentos nomeados
 
         Returns:
-            Cache key as string, must be unique for different input combinations
-
-        Raises:
-            ValueError: If key cannot be generated (e.g., non-serializable args)
+            Chave de cache como string
         """
         ...
 
 
 class Serializer(Protocol):
-    """Protocol for custom data serialization.
+    """Protocol para serialização de dados.
 
-    Enables pluggable serialization strategies for different data types
-    and performance requirements (JSON, MessagePack, Pickle, etc.).
+    Implemente este protocol para usar formatos de serialização
+    customizados (JSON, Protocol Buffers, etc.).
+
+    Example:
+        ```python
+        import json
+
+        class JsonSerializer:
+            def serialize(self, data: Any) -> bytes:
+                return json.dumps(data).encode()
+
+            def deserialize(self, data: bytes) -> Any:
+                return json.loads(data.decode())
+        ```
     """
 
     def serialize(self, data: Any) -> bytes:
-        """Serialize Python data to bytes for storage.
+        """Serializa dados Python para bytes.
 
         Args:
-            data: Python object to serialize
+            data: Dados a serializar
 
         Returns:
-            Serialized data as bytes
+            Dados serializados em bytes
 
         Raises:
-            TypeError: If data type is not serializable by this serializer
-            ValueError: If data contains invalid values for this format
+            Exception: Se falhar ao serializar
         """
         ...
 
     def deserialize(self, data: bytes) -> Any:
-        """Deserialize bytes back to Python data.
+        """Deserializa bytes para dados Python.
 
         Args:
-            data: Serialized bytes from storage
+            data: Bytes a deserializar
 
         Returns:
-            Deserialized Python object
+            Dados Python deserializados
 
         Raises:
-            ValueError: If data is corrupted or invalid for this format
-            TypeError: If data format is incompatible with this deserializer
+            Exception: Se falhar ao deserializar
         """
         ...
 
 
-class ObservabilityHooks(Protocol):
-    """Protocol for custom observability and monitoring hooks.
+class CacheMetrics(Protocol):
+    """Protocol para coleta de métricas de cache.
 
-    Allows integration with monitoring systems, metrics collection,
-    distributed tracing, and custom logging strategies.
+    Implemente este protocol para integrar com sistemas
+    de monitoramento customizados.
+
+    Example:
+        ```python
+        class PrometheusMetrics:
+            def record_hit(self, key: str, latency: float) -> None:
+                cache_hits_total.labels(key=key).inc()
+                cache_latency.labels(operation="hit").observe(latency)
+        ```
     """
 
-    def on_cache_hit(self, key: str, latency: float) -> None:
-        """Called when cache lookup results in a hit.
+    def record_hit(self, key: str, latency: float) -> None:
+        """Registra cache hit.
 
         Args:
-            key: Cache key that was found
-            latency: Time taken for cache lookup in seconds
+            key: Chave do cache
+            latency: Latência da operação em segundos
         """
         ...
 
-    def on_cache_miss(self, key: str, latency: float) -> None:
-        """Called when cache lookup results in a miss.
+    def record_miss(self, key: str, latency: float) -> None:
+        """Registra cache miss.
 
         Args:
-            key: Cache key that was not found
-            latency: Time taken for cache lookup in seconds
+            key: Chave do cache
+            latency: Latência da operação em segundos
         """
         ...
 
-    def on_cache_write(self, key: str, size: int) -> None:
-        """Called when data is written to cache.
+    def record_write(self, key: str, size: int) -> None:
+        """Registra escrita no cache.
 
         Args:
-            key: Cache key being written
-            size: Size of serialized data in bytes
+            key: Chave do cache
+            size: Tamanho dos dados em bytes
         """
         ...
 
-    def on_cache_error(self, key: str, error: Exception) -> None:
-        """Called when cache operation encounters an error.
+    def record_error(self, key: str, error: Exception) -> None:
+        """Registra erro de cache.
 
         Args:
-            key: Cache key involved in the failed operation
-            error: Exception that occurred during cache operation
+            key: Chave do cache
+            error: Exceção que ocorreu
         """
         ...
